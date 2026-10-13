@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "yearbookhub",
   "private": true,
   "workspaces": [
@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "npm run start --workspace apps/mobile",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
