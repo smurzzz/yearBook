@@ -121,4 +121,4 @@ Format: **Context → Decision → Alternatives → Consequences.** Add new entr
 
 | Date | Question | Choice | Reason |
 | ---- | -------- | ------ | ------ |
-|      |          |        |        |
+| 2026-10-13 | Where does the P2 frontend mockup live, given `phases.md` planned an Expo UI in `apps/mobile`? | Integrate the supplied Vite + React clickable prototype as the `apps/web` workspace (all 6 screens, sheets, states, flows on mock data); keep the P1 Expo scaffold intact for the native build. | The design owner supplied the frontend code as the P2 deliverable. Adding it as a workspace is additive, keeps CI (`npm run lint` / `typecheck`) green across all workspaces, and the prototype mirrors `specification.md` screens, copy and rules on in-memory fixtures. |

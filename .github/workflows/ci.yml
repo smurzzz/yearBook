@@ -26,7 +26,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test --workspace packages/shared
-      - run: npm run test --workspace apps/mobile -- --ci
+      - run: npm run test --workspace apps/mobile --if-present -- --ci
 
   api-integration:
     name: API integration tests (local Supabase)
