@@ -336,6 +336,31 @@ export const UploadProgressSheet = ({ open }: { open: boolean }) => {
                 },
               }}
             />
+          ) : state.uploadError === "tooLarge" ? (
+            <InlineBanner
+              style={{ marginBottom: 16 }}
+              tone="error"
+              title="Photo too large"
+              message="Photo too large. Choose a smaller photo."
+              action={{
+                label: "Pick another photo",
+                onClick: () => dispatch({ type: "setUploadError", error: null }),
+              }}
+            />
+          ) : state.uploadError === "storage" ? (
+            <InlineBanner
+              style={{ marginBottom: 16 }}
+              tone="error"
+              title="Storage limit reached"
+              message="Storage is full. Please contact the yearbook committee."
+              action={{
+                label: "Manage my photos",
+                onClick: () => {
+                  dispatch({ type: "setUploadError", error: null });
+                  dispatch({ type: "goto", screen: "myPhotos" });
+                },
+              }}
+            />
           ) : null}
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

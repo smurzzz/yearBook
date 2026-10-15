@@ -67,6 +67,10 @@ export type Action =
   | { type: "retryFailed" }
   | { type: "resetUpload" }
   | { type: "setNetwork"; network: "online" | "offline" }
+  | { type: "setLoadError"; value: boolean }
+  | { type: "setSlowNetwork"; value: boolean }
+  | { type: "setForceUploadFailure"; value: boolean }
+  | { type: "setUploadError"; error: PrototypeState["uploadError"] }
   | { type: "setLoading"; value: boolean }
   | { type: "setRefreshing"; value: boolean }
   | { type: "setTheme"; theme: "light" | "dark" }
@@ -89,6 +93,9 @@ export const createInitialState = (patch: Partial<PrototypeState> = {}): Prototy
   overlays: [],
   dialog: null,
   network: "online",
+  loadError: false,
+  slowNetwork: false,
+  forceUploadFailure: false,
   loading: false,
   refreshing: false,
   photos: PHOTOS,
@@ -541,8 +548,8 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
             ...item,
             status: "waiting" as const,
             progress: 0,
-            failNote: undefined,
-            willFail: i === 1,
+          failNote: undefined,
+          willFail: state.forceUploadFailure || i === 1,
           })),
         },
         overlays: ensure(state.overlays, "uploadProgress"),
@@ -594,6 +601,24 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
 
     case "setNetwork":
       return { ...state, network: action.network };
+
+    case "setLoadError":
+      return { ...state, loadError: action.value };
+
+    case "setSlowNetwork":
+      return { ...state, slowNetwork: action.value };
+
+    case "setForceUploadFailure":
+      return { ...state, forceUploadFailure: action.value };
+
+    /** Dev-forced upload errors (spec §10: too large / storage full). Opens the
+     *  progress sheet so the banner is visible where the user would see it. */
+    case "setUploadError":
+      return {
+        ...state,
+        uploadError: action.error,
+        overlays: action.error ? ensure(state.overlays, "uploadProgress") : drop(state.overlays, "uploadProgress"),
+      };
 
     case "setLoading":
       return { ...state, loading: action.value };

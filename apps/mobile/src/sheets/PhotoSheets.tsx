@@ -64,7 +64,31 @@ export const PhotoViewerOverlay = ({
 
   if (!open) return null;
   const photo = list[index];
-  if (!photo) return null;
+  if (!photo) {
+    // Spec §10 "Not found": dead deep link (/photo/[id]) or a removed photo.
+    return (
+      <Modal visible transparent statusBarTranslucent animationType="fade" onRequestClose={dismiss}>
+        <View style={{ flex: 1, backgroundColor: t.canvas, alignItems: "center", justifyContent: "center", padding: 32 }}>
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: t.muted,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ImageOff size={26} color={t.mutedForeground} />
+          </View>
+          <Text style={[typography.title, { color: t.foreground, marginTop: 16, textAlign: "center" }]}>
+            This item is no longer available.
+          </Text>
+          <Button title="Close" variant="outline" style={{ marginTop: 20 }} onPress={dismiss} />
+        </View>
+      </Modal>
+    );
+  }
 
   const wasRejected = photo.status === "rejected";
   const event = eventById(photo.eventId);

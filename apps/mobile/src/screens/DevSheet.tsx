@@ -8,6 +8,9 @@ import { typography } from "../theme/tokens";
 import { createInitialState } from "../prototype/reducer";
 import { useMockApp } from "../prototype/store";
 
+/** Yesterday's ISO timestamp — kept at module scope so the component stays pure. */
+const pastDeadlineIso = () => new Date(Date.now() - 86_400_000).toISOString();
+
 /**
  * Dev menu (P2A): switch role, reset mock data, and force every system state
  * from spec §10. Only rendered in __DEV__ builds.
@@ -70,6 +73,15 @@ export const DevSheet = ({ open, onClose }: { open: boolean; onClose: () => void
           });
           onClose();
         })}
+        {row("Empty data", "All empty states (photos, events, notifications)", () => {
+          dispatch({ type: "hydrate", patch: { photos: [], events: [], notifications: [] } });
+          onClose();
+        })}
+        {row("Deadline passed", "Every event is past its deadline (Closed chips, uploads blocked)", () => {
+          const past = pastDeadlineIso();
+          dispatch({ type: "hydrate", patch: { events: state.events.map((e) => ({ ...e, deadline: past })) } });
+          onClose();
+        })}
 
         <Text
           style={[
@@ -84,6 +96,24 @@ export const DevSheet = ({ open, onClose }: { open: boolean; onClose: () => void
           description="Shows the offline banner and blocks uploads"
           checked={state.network === "offline"}
           onChange={(v) => dispatch({ type: "setNetwork", network: v ? "offline" : "online" })}
+        />
+        <SwitchRow
+          label="Server error"
+          description="Inline “Something went wrong” + Try again on data screens"
+          checked={state.loadError}
+          onChange={(v) => dispatch({ type: "setLoadError", value: v })}
+        />
+        <SwitchRow
+          label="Slow network"
+          description="Upload progress ticks ~5× slower"
+          checked={state.slowNetwork}
+          onChange={(v) => dispatch({ type: "setSlowNetwork", value: v })}
+        />
+        <SwitchRow
+          label="Upload failure"
+          description="Every photo in the next batch fails at 60% (Retry succeeds)"
+          checked={state.forceUploadFailure}
+          onChange={(v) => dispatch({ type: "setForceUploadFailure", value: v })}
         />
         <SwitchRow
           label="Loading (skeletons)"
@@ -112,6 +142,23 @@ export const DevSheet = ({ open, onClose }: { open: boolean; onClose: () => void
         {row("Non-school account", "Sign-in shows the school-domain banner", () => {
           dispatch({ type: "signOut" });
           dispatch({ type: "authIssue", issue: "nonSchool" });
+          onClose();
+        })}
+        {row("Access denied (403)", "Full-screen “You don't have access to this area.”", () => {
+          dispatch({ type: "authIssue", issue: "denied" });
+          dispatch({ type: "goto", screen: state.role === "admin" ? "review" : "events" });
+          onClose();
+        })}
+        {row("Not found (404)", "Photo viewer shows “This item is no longer available.”", () => {
+          dispatch({ type: "openOverlay", overlay: { id: "photoViewer", photoId: "missing-photo" } });
+          onClose();
+        })}
+        {row("Photo too large", "Upload sheet: “Photo too large. Choose a smaller photo.”", () => {
+          dispatch({ type: "setUploadError", error: "tooLarge" });
+          onClose();
+        })}
+        {row("Storage full", "Upload sheet: “Storage is full. Please contact the yearbook committee.”", () => {
+          dispatch({ type: "setUploadError", error: "storage" });
           onClose();
         })}
         <View style={{ height: 24 }} />

@@ -26,7 +26,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test --workspace packages/shared
-      - run: npm run test --workspace apps/mobile --if-present -- --ci
+      # vitest runner — it rejects jest's --ci flag, so no extra args
+      - run: npm run test --workspace apps/mobile --if-present
 
   api-integration:
     name: API integration tests (local Supabase)

@@ -43,9 +43,10 @@ export const PrototypeProvider = ({
 
   useEffect(() => {
     if (!animate || state.uploadPhase !== "running") return;
-    const id = setInterval(() => dispatch({ type: "uploadTick" }), 220);
+    // Slow-network simulation (P2A dev menu): the same ticks, ~5× slower.
+    const id = setInterval(() => dispatch({ type: "uploadTick" }), state.slowNetwork ? 1_100 : 220);
     return () => clearInterval(id);
-  }, [animate, state.uploadPhase]);
+  }, [animate, state.uploadPhase, state.slowNetwork]);
 
   return (
     <PrototypeContext.Provider value={{ state, dispatch }}>

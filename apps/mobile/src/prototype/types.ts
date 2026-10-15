@@ -189,6 +189,12 @@ export interface PrototypeState {
   dialogPhotoId?: string;
   dialogEventId?: string;
   network: "online" | "offline";
+  /** Spec §10 "Error + retry": a request failed (network/5xx). */
+  loadError: boolean;
+  /** Dev-forced: upload ticks run slowly (slow-network simulation). */
+  slowNetwork: boolean;
+  /** Dev-forced: every photo in the batch fails at 60 % once. */
+  forceUploadFailure: boolean;
   loading: boolean;
   refreshing: boolean;
 

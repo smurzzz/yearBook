@@ -91,8 +91,8 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 
 ## E10 Polish & states
 
-- [ ] **T-100** System states (offline banner, error+retry, maintenance, permission denied, session expired, storage full, deadline passed) — T-024 — P0 — M — each reachable in tests
-- [ ] **T-101** Skeleton loaders for Home, grids, lists, review card — T-056, T-071 — P1 — S
+- [x] **T-100** System states (offline banner, error+retry, maintenance, permission denied, session expired, storage full, deadline passed) — T-024 — P0 — M — each reachable in tests
+- [x] **T-101** Skeleton loaders for Home, grids, lists, review card — T-056, T-071 — P1 — S
 - [ ] **T-102** Dark mode via tokens — T-020 — P1 — M
 - [ ] **T-103** Accessibility pass (labels, contrast, touch targets, font scale) — T-062, T-071 — P1 — M
 - [ ] **T-104** Batch stack badge (`batch_size`) — T-051, T-071 — P2 — S

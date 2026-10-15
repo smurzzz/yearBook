@@ -158,6 +158,16 @@ export const InlineBanner = ({
   );
 };
 
+/** Spec §10 "Error + retry": inline block when a request failed (network/5xx). */
+export const ErrorRetryBlock = ({ onRetry, style }: { onRetry: () => void; style?: StyleProp<ViewStyle> }) => (
+  <InlineBanner
+    style={style}
+    tone="error"
+    title="Something went wrong. Please try again."
+    action={{ label: "Try again", onClick: onRetry }}
+  />
+);
+
 /** Persistent offline strip pinned above the tab bar. */
 export const OfflineBanner = () => {
   const t = useTheme();
@@ -210,7 +220,8 @@ export const ReconnectedBanner = () => {
 interface EmptyStateProps {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   title: string;
-  message: string;
+  /** Optional — spec §10 states like "No photos yet." have no supporting line. */
+  message?: string;
   action?: { label: string; onClick: () => void; icon?: React.ComponentType<{ size?: number; color?: string }> };
   variant?: "screen" | "inset";
   style?: StyleProp<ViewStyle>;

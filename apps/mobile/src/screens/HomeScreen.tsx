@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Avatar, PhotoTile } from "../components/ui/Media";
 import { Button } from "../components/ui/Button";
-import { EmptyState } from "../components/ui/Feedback";
+import { EmptyState, ErrorRetryBlock } from "../components/ui/Feedback";
 import { SectionHeader } from "../components/ui/Surface";
 import { CountdownChip, UnreadDot } from "../components/ui/Chips";
 import { useTheme } from "../theme/useTheme";
@@ -170,12 +170,28 @@ export const HomeScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        {state.loadError ? (
+          <ErrorRetryBlock
+            style={{ marginTop: 16 }}
+            onRetry={() => dispatch({ type: "setLoadError", value: false })}
+          />
+        ) : null}
         <SectionHeader style={{ marginTop: 16 }} eyebrow="Deadlines" title="Upcoming deadlines" />
-        <View style={{ marginTop: 12, gap: 14 }}>
-          {events.map((event) => (
-            <EventCard key={event.id} event={event} onPress={() => open("eventDetail", { eventId: event.id })} />
-          ))}
-        </View>
+        {events.length ? (
+          <View style={{ marginTop: 12, gap: 14 }}>
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} onPress={() => open("eventDetail", { eventId: event.id })} />
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            variant="inset"
+            style={{ marginTop: 12 }}
+            icon={Images}
+            title="No events yet"
+            message="Check back soon."
+          />
+        )}
 
         <SectionHeader
           style={{ marginTop: 28 }}
@@ -210,8 +226,8 @@ export const HomeScreen = () => {
             variant="inset"
             style={{ marginTop: 12 }}
             icon={Images}
-            title="No photos yet"
-            message="Tap + to upload your first one."
+            title="No uploads yet"
+            message="Tap Upload to add your first photos."
             action={{ label: "Upload photos", icon: Plus, onClick: () => router.push("/(student)/upload") }}
           />
         )}

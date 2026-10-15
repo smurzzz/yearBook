@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Avatar, PhotoTile } from "../components/ui/Media";
 import { Chip, ChipRow } from "../components/ui/Chips";
-import { EmptyState, Spinner } from "../components/ui/Feedback";
+import { EmptyState, ErrorRetryBlock, Spinner } from "../components/ui/Feedback";
 import { Button } from "../components/ui/Button";
 import { Surface } from "../components/ui/Surface";
 import { useTheme } from "../theme/useTheme";
@@ -112,9 +112,15 @@ export const MyPhotosScreen = () => {
           </View>
         ) : null}
 
+        {state.loadError ? (
+          <ErrorRetryBlock
+            style={{ marginHorizontal: 20, marginTop: 8 }}
+            onRetry={() => dispatch({ type: "setLoadError", value: false })}
+          />
+        ) : null}
         {state.loading ? (
           <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-            <GridOnlySkeleton count={9} />
+            <GridOnlySkeleton count={12} />
           </View>
         ) : visible.length ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 2, paddingHorizontal: 20, paddingTop: 8 }}>

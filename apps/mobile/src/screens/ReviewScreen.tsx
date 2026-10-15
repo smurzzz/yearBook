@@ -4,6 +4,7 @@ import {
   Check,
   ClipboardCheck,
   Flag,
+  Images,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -16,7 +17,7 @@ import { Avatar, PhotoTile, ZoomableImage } from "../components/ui/Media";
 import { Button } from "../components/ui/Button";
 import { SearchField } from "../components/ui/Fields";
 import { Chip, ChipRow, MetaChip, SegmentedControl } from "../components/ui/Chips";
-import { EmptyState, InlineBanner } from "../components/ui/Feedback";
+import { EmptyState, ErrorRetryBlock, InlineBanner } from "../components/ui/Feedback";
 import { eventById, personById } from "../prototype/data";
 import { formatDate, relativeTime } from "../prototype/format";
 import {
@@ -87,6 +88,14 @@ const ReviewDeck = () => {
   const photo = queue[index];
 
   if (state.loading) return <ReviewSkeleton />;
+
+  if (state.loadError) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12 }}>
+        <ErrorRetryBlock onRetry={() => dispatch({ type: "setLoadError", value: false })} />
+      </View>
+    );
+  }
 
   if (!photo) {
     return (
@@ -291,7 +300,6 @@ const AllPhotos = () => {
   const counts = useMemo(() => statusCounts(filteredPhotos(state)), [state]);
   const batch = useMemo(() => batchCounts(results), [results]);
   const chipCount = activeFilterCount(filter);
-  const reported = results.filter((p) => p.removalRequest && !p.removalRequest.resolved);
 
   const patch = (next: Partial<FilterState>) => dispatch({ type: "applyFilter", filter: { ...filter, ...next } });
 
@@ -313,6 +321,14 @@ const AllPhotos = () => {
     return (
       <View style={{ flex: 1 }}>
         <GridOnlySkeleton count={12} />
+      </View>
+    );
+  }
+
+  if (state.loadError) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12 }}>
+        <ErrorRetryBlock onRetry={() => dispatch({ type: "setLoadError", value: false })} />
       </View>
     );
   }
@@ -399,19 +415,25 @@ const AllPhotos = () => {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-        {filter.reportedOnly && reported.length === 0 ? (
-          <EmptyState
-            icon={Flag}
-            title="No removal requests"
-            message="Photos students ask to remove will appear here for the committee to resolve."
-          />
-        ) : results.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            title="No photos match"
-            message="Try a different search term or reset the filters."
-            action={{ label: "Reset filters", onClick: () => dispatch({ type: "resetFilter" }) }}
-          />
+        {results.length === 0 ? (
+          chipCount === 0 ? (
+            <EmptyState icon={Images} title="No photos yet" />
+          ) : filter.reportedOnly && chipCount === 1 ? (
+            <EmptyState
+              icon={Flag}
+              title="No removal requests"
+              message="Photos students ask to remove will appear here for the committee to resolve."
+            />
+          ) : filter.reportedOnly ? (
+            <EmptyState icon={Flag} title="No matching reports." />
+          ) : (
+            <EmptyState
+              icon={Search}
+              title="No photos match"
+              message="Try a different search term or reset the filters."
+              action={{ label: "Reset filters", onClick: () => dispatch({ type: "resetFilter" }) }}
+            />
+          )
         ) : (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
             {results.map((photo) => (

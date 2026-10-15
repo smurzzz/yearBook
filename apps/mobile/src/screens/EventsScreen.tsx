@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/ui/Button";
 import { SearchField } from "../components/ui/Fields";
 import { CountBadge, OpenClosedBadge } from "../components/ui/Chips";
-import { EmptyState } from "../components/ui/Feedback";
+import { EmptyState, ErrorRetryBlock } from "../components/ui/Feedback";
 import { useTheme } from "../theme/useTheme";
 import { radius as radii, typography } from "../theme/tokens";
 import { img } from "../prototype/assets";
@@ -61,7 +61,7 @@ const AdminEventCard = ({ event, submissionCount, onPress }: { event: EventItem;
 export const EventsScreen = () => {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, open } = useMockApp();
+  const { state, dispatch, open } = useMockApp();
   const [search, setSearch] = useState("");
 
   const events = useMemo(() => {
@@ -107,8 +107,14 @@ export const EventsScreen = () => {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        {state.loadError ? (
+          <ErrorRetryBlock
+            style={{ marginBottom: 16 }}
+            onRetry={() => dispatch({ type: "setLoadError", value: false })}
+          />
+        ) : null}
         {state.loading ? (
-          <ListSkeleton rows={4} />
+          <ListSkeleton rows={6} />
         ) : events.length ? (
           <View style={{ gap: 12 }}>
             {events.map((event) => (
