@@ -86,7 +86,7 @@
 ## 4. Release procedure
 
 1. Merge to `main` (CI green). Vercel deploys the API automatically.
-2. Migrations: the `supabase-migrations` workflow applies new SQL on pushes touching `supabase/migrations/**` (production environment approval recommended). **Deploy order for schema changes:** migration first (backward compatible), then API, then app.
+2. Migrations: applied **manually by an owner** — paste each `supabase/migrations/*.sql` in filename order into the Supabase Dashboard SQL Editor and run it, then `supabase/seed.sql` if seed data changed (CI validates the SQL against a local Supabase first). **Deploy order for schema changes:** migration first (backward compatible), then API, then app.
 3. Tag `vX.Y.Z` → `eas-build` workflow builds the `preview` APK (`--no-wait`); get the link from expo.dev.
 4. Install on two devices; run `testing/qa-checklist.md` sections A–E.
 5. Share the APK link/QR with testers. Increment `version` in `app.json` per release.

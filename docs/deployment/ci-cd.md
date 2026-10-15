@@ -7,7 +7,7 @@ The reference workflow files are in `.github/workflows/` inside this docs folder
 | Workflow                                                                                                            | Trigger                                                  | What it does                                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml`                                                                                                            | PR, push to `main`                                       | Install, lint, typecheck, unit tests (shared, api, mobile); starts local Supabase, applies migrations + seed, runs API integration tests |
-| `supabase-migrations.yml`                                                                                           | Push to `main` touching `supabase/migrations/**`, manual | Links the production project and runs `supabase db push` (uses the `production` environment)                                             |
+| Database migrations are **not** auto-applied: an owner pastes `supabase/migrations/*.sql` (filename order) into the Supabase Dashboard SQL Editor, then `supabase/seed.sql` if seed data changed. CI validates everything first against a throwaway local Supabase. | | |
 | `eas-build.yml`                                                                                                     | Tag `v*`, manual                                         | Builds the Android APK on EAS (profile input; default `preview`)                                                                         |
 | API deployment is handled by **Vercel Git integration** (preview per PR, production on `main`). No workflow needed. |
 
@@ -16,10 +16,7 @@ The reference workflow files are in `.github/workflows/` inside this docs folder
 | Name                                                                   | Scope                    | Used by    |
 | ---------------------------------------------------------------------- | ------------------------ | ---------- |
 | `EXPO_TOKEN`                                                           | repo                     | eas-build  |
-| `SUPABASE_ACCESS_TOKEN`                                                | environment `production` | migrations |
-| `SUPABASE_DB_PASSWORD`                                                 | environment `production` | migrations |
-| `SUPABASE_PROJECT_ID`                                                  | environment `production` | migrations |
-| CI itself needs no production secrets (uses local Supabase and mocks). |
+| CI itself needs no production secrets (uses local Supabase and mocks); cloud migrations run manually via the Dashboard SQL Editor, so no Supabase tokens/passwords live in GitHub. |
 
 ## 3. Branching & PRs
 
