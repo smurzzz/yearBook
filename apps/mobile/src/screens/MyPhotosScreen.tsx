@@ -14,6 +14,7 @@ import { STUDENT_ID, eventById, personById } from "../prototype/data";
 import { batchCountFor, batchCounts, myPhotos, studentStats } from "../prototype/selectors";
 import { GridOnlySkeleton } from "../prototype/skeletons";
 import { useMockApp } from "../prototype/store";
+import { useEventsSync, useMyPhotosSync } from "../api/sync";
 
 /** Screen 4 — My Photos. Instagram-style gallery with no status anywhere. */
 export const MyPhotosScreen = () => {
@@ -21,6 +22,10 @@ export const MyPhotosScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state, dispatch, open } = useMockApp();
+  // P6: the grid, its chips (eventById via the registry) and the stats all
+  // hydrate from GET /photos/mine + GET /events; no-op in the demo build.
+  useEventsSync();
+  useMyPhotosSync();
   const [eventFilter, setEventFilter] = useState<string>("all");
 
   const mine = myPhotos(state);

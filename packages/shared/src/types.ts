@@ -36,6 +36,10 @@ export type EventDTO = {
   status: "open" | "closed";
   my_photo_count?: number;
   photo_count?: number;
+  /** Submission rules shown in the Event Detail sheet. Server-managed:
+   *  derived from `max_photos` on create, editable only through SQL (P6
+   *  contract change — the detail sheet renders this list). */
+  rules: string[];
   created_at: ISO;
 };
 
@@ -52,6 +56,7 @@ export type StudentPhotoDTO = {
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
   thumb_url: string;
   original_url: string;
   needs_replacement: boolean;
@@ -62,17 +67,37 @@ export type StudentPhotoDTO = {
   } | null;
 };
 
+/** A photo as any grid needs it (P6 contract change): enough to fill the
+ *  view model — stack badge, event chip and ordering — without a detail
+ *  fetch. Caption/category/club/rejection stay on the detail DTOs; surfaces
+ *  that render them (viewer, detail sheets) hydrate on open. Student tiles
+ *  never carry status — student surfaces must not receive it. */
 export type TileDTO = {
   id: Id;
   thumb_url: string;
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
+  event: Ref;
+  created_at: ISO;
+};
+
+export type AdminUploaderRef = {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+  club: Ref | null;
 };
 
 export type AdminTileDTO = TileDTO & {
   status: PhotoStatus;
   reported: boolean;
+  caption: string;
+  category: Ref;
+  club: Ref | null;
+  uploader: AdminUploaderRef;
 };
 
 export type ReportReason = (typeof REPORT_REASONS)[number];
@@ -118,6 +143,7 @@ export type AdminPhotoDTO = {
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
   thumb_url: string;
   original_url: string;
   open_report: ReportDTO | null;

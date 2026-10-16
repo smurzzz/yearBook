@@ -12,6 +12,7 @@ import { useTheme } from "../../theme/useTheme";
 import { elevation, radius as radii, typography } from "../../theme/tokens";
 import { Button, IconButton } from "./Button";
 import { useMockApp } from "../../prototype/store";
+import { api, USE_MOCK } from "../../api";
 
 export type SheetSize = "auto" | "tall" | "full";
 
@@ -351,7 +352,21 @@ export const ToastHost = ({ bottom = 104 }: { bottom?: number }) => {
             title={toast.actionLabel ?? "Undo"}
             size="sm"
             variant="onPhoto"
-            onPress={() => dispatch({ type: "undo" })}
+            onPress={() => {
+              // P6: undo also reverts the reject on the server
+              // (POST /admin/photos/:id/reset); the reducer mirrors it locally.
+              const photoId = state.undo?.photoId;
+              void (async () => {
+                if (!USE_MOCK && photoId) {
+                  try {
+                    await api.resetPhoto(photoId);
+                  } catch {
+                    /* still revert locally — the queue is the source of truth on screen */
+                  }
+                }
+                dispatch({ type: "undo" });
+              })();
+            }}
           />
         ) : null}
       </View>

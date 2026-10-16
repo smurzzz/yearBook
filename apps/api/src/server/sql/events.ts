@@ -7,7 +7,7 @@ import type { Db, Rows } from "@/server/lib/db";
 /** photo_count = completed photos (admin); my_photo_count = caller's completed (student). */
 const eventColumns = (viewerPlaceholder: string): string => `
   e.id, e.name, e.description, e.cover_key,
-  e.deadline::text as deadline, e.max_photos, e.is_open,
+  e.deadline::text as deadline, e.max_photos, e.is_open, e.rules,
   e.created_at::text as created_at,
   (select count(*) from public.photos p
      where p.event_id = e.id and p.upload_completed_at is not null)::int as photo_count,

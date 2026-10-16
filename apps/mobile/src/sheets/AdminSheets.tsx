@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import {
   ArrowLeftRight,
@@ -22,6 +22,10 @@ import { DateTimeField, FieldLabel, SearchField, SwitchRow, Textarea } from "../
 import { EmptyState } from "../components/ui/Feedback";
 import { Surface } from "../components/ui/Surface";
 import { useMockApp } from "../prototype/store";
+import { img } from "../prototype/assets";
+import { api, USE_MOCK } from "../api";
+import { rejectionCodeOf, registerPeopleFrom, toAdminPhoto } from "../api/dto";
+import { useUploaderPhotosSync } from "../api/sync";
 import { PEOPLE, eventById, personById } from "../prototype/data";
 import { formatDate, formatDateTime } from "../prototype/format";
 import { batchCountFor, batchCounts, filterPhotos, photosByUploader } from "../prototype/selectors";
@@ -40,6 +44,25 @@ import {
 export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoId?: string }) => {
   const t = useTheme();
   const { state, dispatch, close, ask, open: openOverlay } = useMockApp();
+  /* P6: hydrate the full AdminPhotoDTO (open report, reviewer, rejection
+     note, signed urls) over the tile the grid already shows. */
+  useEffect(() => {
+    if (USE_MOCK || !open || !photoId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dto = await api.adminPhoto(photoId);
+        if (cancelled) return;
+        registerPeopleFrom([dto.uploader]);
+        dispatch({ type: "mergePhotos", photos: [toAdminPhoto(dto)] });
+      } catch {
+        /* keep the tile data; reopening retries */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, open, photoId]);
   const photo = state.photos.find((p) => p.id === photoId) ?? null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -70,7 +93,19 @@ export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoI
               variant="admin"
               style={{ flex: 1 }}
               title="Save tags"
-              onPress={() => {
+              onPress={async () => {
+                try {
+                  const lookups = await api.lookups();
+                  await api.patchAdminPhoto(photo.id, {
+                    caption: draft.caption,
+                    category_id: lookups.categories.find((c) => c.name === draft.category)?.id,
+                    club_id: draft.club
+                      ? lookups.clubs.find((c) => c.name === draft.club)?.id ?? null
+                      : null,
+                  });
+                } catch {
+                  return;
+                }
                 dispatch({
                   type: "updatePhoto",
                   photoId: photo.id,
@@ -92,7 +127,14 @@ export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoI
               style={{ flex: 1 }}
               title="Pending"
               icon={<ArrowLeftRight size={15} color={t.foreground} />}
-              onPress={() => dispatch({ type: "backToPending", photoId: photo.id })}
+              onPress={async () => {
+                try {
+                  await api.resetPhoto(photo.id);
+                } catch {
+                  return;
+                }
+                dispatch({ type: "backToPending", photoId: photo.id });
+              }}
             />
             <Button
               size="sm"
@@ -110,7 +152,15 @@ export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoI
               style={{ flex: 1 }}
               title="Approve"
               icon={<Check size={15} color={t.adminForeground} />}
-              onPress={() => dispatch({ type: "approve", photoId: photo.id })}
+              onPress={async () => {
+                // P6: the server owns the transition; the reducer mirrors it.
+                try {
+                  await api.approvePhoto(photo.id);
+                } catch {
+                  return;
+                }
+                dispatch({ type: "approve", photoId: photo.id });
+              }}
             />
           </View>
         )
@@ -118,7 +168,7 @@ export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoI
     >
       <View style={{ paddingBottom: 12 }}>
         <View style={{ height: 256, width: "100%", backgroundColor: t.canvas }}>
-          <Image source={{ uri: photo.src }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          <Image source={img(photo.src)} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
           <View style={{ position: "absolute", right: 16, top: 16, zIndex: 20 }}>
             <Pressable
               onPress={() => setMenuOpen((v) => !v)}
@@ -380,7 +430,15 @@ export const AdminPhotoDetailSheet = ({ open, photoId }: { open: boolean; photoI
                       variant="outline"
                       style={{ flex: 1 }}
                       title="Dismiss"
-                      onPress={() => dispatch({ type: "dismissRemoval", photoId: photo.id })}
+                      onPress={async () => {
+                        const reportId = photo.removalRequest?.id ?? `report-${photo.id}`;
+                        try {
+                          await api.resolveReport(reportId, { action: "dismiss" });
+                        } catch {
+                          return;
+                        }
+                        dispatch({ type: "dismissRemoval", photoId: photo.id });
+                      }}
                     />
                     <Button
                       variant="destructive"
@@ -427,7 +485,17 @@ export const RejectReasonSheet = ({ open, photoId }: { open: boolean; photoId?: 
           icon={<X size={17} color={t.destructiveForeground} />}
           onPress={() => {
             if (!reason || !photoId) return;
-            dispatch({ type: "reject", photoId, reason });
+            void (async () => {
+              try {
+                await api.rejectPhoto(photoId, {
+                  reason: rejectionCodeOf(reason) as Parameters<typeof api.rejectPhoto>[1]["reason"],
+                  note: needsNote ? note.trim() : undefined,
+                });
+              } catch {
+                return; // keep the sheet open so the admin can retry
+              }
+              dispatch({ type: "reject", photoId, reason });
+            })();
           }}
         />
       }
@@ -677,6 +745,8 @@ export const FilterSheet = ({ open }: { open: boolean }) => {
 export const UploaderGridSheet = ({ open, uploaderId }: { open: boolean; uploaderId?: string }) => {
   const t = useTheme();
   const { state, close, open: openOverlay } = useMockApp();
+  // P6: the uploader's photos merge into the pool from GET /admin/users/:id/photos.
+  useUploaderPhotosSync(uploaderId);
   const photos = useMemo(
     () => (uploaderId ? photosByUploader(state, uploaderId) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps

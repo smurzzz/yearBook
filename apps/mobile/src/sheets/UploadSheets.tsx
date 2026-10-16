@@ -14,6 +14,7 @@ import { Sheet } from "../components/ui/Overlay";
 import { Button } from "../components/ui/Button";
 import { InlineBanner, Meter, PermissionPrompt, UploadRow } from "../components/ui/Feedback";
 import { useMockApp } from "../prototype/store";
+import { img } from "../prototype/assets";
 import { LIBRARY_PHOTOS, eventById } from "../prototype/data";
 import { MAX_BATCH, uploadGuard, uploadSummary } from "../prototype/selectors";
 
@@ -195,7 +196,7 @@ export const LibraryPickerSheet = ({ open }: { open: boolean }) => {
                 style={{ width: "31.5%", aspectRatio: 1, borderRadius: radii.tile, overflow: "hidden" }}
               >
                 <Image
-                  source={{ uri: src }}
+                  source={img(src)}
                   style={{ width: "100%", height: "100%", transform: [{ scale: isSelected ? 0.92 : 1 }] }}
                   resizeMode="cover"
                 />

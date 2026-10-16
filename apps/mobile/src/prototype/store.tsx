@@ -6,6 +6,8 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
+import { USE_MOCK, configureMockApi } from "../api";
+import { createMockApiClient } from "../api/mock";
 import { createInitialState, reducer, type Action } from "./reducer";
 import type {
   DialogId,
@@ -24,6 +26,16 @@ interface PrototypeContextValue {
 
 const PrototypeContext = createContext<PrototypeContextValue | null>(null);
 
+/* Demo build: the ApiClient singleton reads the live store through this
+   module slot. It is written from an effect (never during render) — every
+   api call happens in a user event or a fetch, long after the commit that
+   synced it — and the adapter falls back to a fresh initial state for the
+   theoretical pre-mount read. */
+let liveState: PrototypeState | null = null;
+if (USE_MOCK) {
+  configureMockApi(createMockApiClient(() => liveState ?? createInitialState()));
+}
+
 export interface PrototypeProviderProps {
   children: ReactNode;
   /** Frame-specific starting point: sign-in, a role, a deep-linked flow step… */
@@ -40,6 +52,10 @@ export const PrototypeProvider = ({
   const [state, dispatch] = useReducer(reducer, initial, (seed) =>
     createInitialState(seed ?? {}),
   );
+
+  useEffect(() => {
+    liveState = state;
+  });
 
   useEffect(() => {
     if (!animate || state.uploadPhase !== "running") return;

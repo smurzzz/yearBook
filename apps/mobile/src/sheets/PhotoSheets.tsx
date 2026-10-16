@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import {
   CalendarDays,
@@ -20,7 +20,9 @@ import { ChoiceRow, FieldLabel, Textarea } from "../components/ui/Fields";
 import { ZoomableImage } from "../components/ui/Media";
 import { Surface } from "../components/ui/Surface";
 import { useMockApp } from "../prototype/store";
-import { eventById } from "../prototype/data";
+import { api, USE_MOCK } from "../api";
+import { registerPeopleFrom, reportCodeOf, toAdminPhoto, toStudentPhoto } from "../api/dto";
+import { ADMIN_ID, STUDENT_ID, eventById } from "../prototype/data";
 import { formatDate } from "../prototype/format";
 import { filteredPhotos, myPhotos } from "../prototype/selectors";
 import { CLUBS, CATEGORIES, REMOVAL_REASONS, type Category, type PhotoItem } from "../prototype/types";
@@ -61,6 +63,36 @@ export const PhotoViewerOverlay = ({
     category: "Candid" as Category,
     club: null as string | null,
   });
+
+  /* P6: hydrate the detail DTO over the grid tile when a photo is opened —
+     the viewer needs caption, tags, the reject reason and current urls that
+     tiles deliberately don't carry (api.md client notes). */
+  const viewerId = state.role === "admin" ? ADMIN_ID : STUDENT_ID;
+  const currentId = list[index]?.id ?? photoId; // the pager item wins on swipe
+  useEffect(() => {
+    const target = currentId;
+    if (USE_MOCK || !open || !target) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (state.role === "admin") {
+          const dto = await api.adminPhoto(target);
+          if (cancelled) return;
+          registerPeopleFrom([dto.uploader]);
+          dispatch({ type: "mergePhotos", photos: [toAdminPhoto(dto)] });
+        } else {
+          const dto = await api.getMyPhoto(target);
+          if (cancelled) return;
+          dispatch({ type: "mergePhotos", photos: [toStudentPhoto(dto, viewerId)] });
+        }
+      } catch {
+        /* the grid tile stays visible; reopening retries */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentId, dispatch, open, state.role, viewerId]);
 
   if (!open) return null;
   const photo = list[index];
@@ -279,7 +311,19 @@ export const PhotoViewerOverlay = ({
                 <Button
                   style={{ flex: 1 }}
                   title="Save changes"
-                  onPress={() => {
+                  onPress={async () => {
+                    try {
+                      const lookups = await api.lookups();
+                      await api.patchMyPhoto(photo.id, {
+                        caption: draft.caption,
+                        category_id: lookups.categories.find((c) => c.name === draft.category)?.id,
+                        club_id: draft.club
+                          ? lookups.clubs.find((c) => c.name === draft.club)?.id ?? null
+                          : null,
+                      });
+                    } catch {
+                      return;
+                    }
                     dispatch({
                       type: "updatePhoto",
                       photoId: photo.id,
@@ -364,7 +408,18 @@ export const RequestRemovalSheet = ({ open, photoId }: { open: boolean; photoId?
           disabled={!reason}
           onPress={() => {
             if (!reason || !photoId) return;
-            dispatch({ type: "requestRemoval", photoId, reason, notes: notes || undefined });
+            void (async () => {
+              try {
+                // P6: the API owns BR-07 (one open report per photo/reporter).
+                await api.createReport(photoId, {
+                  reason: reportCodeOf(reason) as Parameters<typeof api.createReport>[1]["reason"],
+                  notes: notes.trim() || undefined,
+                });
+              } catch {
+                return; // keep the sheet open so the student can retry
+              }
+              dispatch({ type: "requestRemoval", photoId, reason, notes: notes || undefined });
+            })();
           }}
         />
       }

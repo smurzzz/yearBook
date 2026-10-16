@@ -61,6 +61,10 @@ const reportRow = (over: Partial<ReportRow> = {}): ReportRow => ({
   width: 1920,
   height: 1280,
   batch_size: 1,
+  batch_id: "77777777-6666-5555-4444-333333333333",
+  photo_created_at: "2026-10-12T00:00:00.000Z",
+  event_id: "11111111-2222-4333-8444-555555555555",
+  event_name: "Intramurals",
   ...over,
 });
 

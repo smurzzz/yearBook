@@ -34,6 +34,10 @@ export interface ReportRow {
   width: number | null;
   height: number | null;
   batch_size: number;
+  batch_id: string | null;
+  photo_created_at: string | null;
+  event_id: string | null;
+  event_name: string | null;
 }
 
 export interface ReportDeps {
@@ -61,13 +65,22 @@ export const toReportDto = (row: ReportRow): ReportDTO => ({
 export const toAdminReportDto = (row: ReportRow): AdminReportDTO => ({
   ...toReportDto(row),
   photo:
-    row.photo_id && row.thumb_path && row.width && row.height
+    row.photo_id &&
+    row.thumb_path &&
+    row.width &&
+    row.height &&
+    row.batch_id &&
+    row.photo_created_at &&
+    row.event_id
       ? ({
           id: row.photo_id,
           thumb_url: "", // signed by the caller (storage lives in routes/services)
           width: Number(row.width),
           height: Number(row.height),
           batch_size: Number(row.batch_size),
+          batch_id: row.batch_id,
+          event: { id: row.event_id, name: row.event_name ?? "" },
+          created_at: row.photo_created_at,
         } as TileDTO)
       : null,
 });

@@ -24,10 +24,23 @@ export interface EventRow {
   deadline: string;
   max_photos: number;
   is_open: boolean;
+  rules: string[] | null;
   created_at: string;
   photo_count: number;
   my_photo_count: number;
 }
+
+/** Server-managed submission rules (api.md §3 GET /events): stored on the row
+ *  when seeded/inserted as an array, otherwise derived from `max_photos` —
+ *  the same defaults the Event Form shows for a new event. */
+export const eventRules = (row: Pick<EventRow, "max_photos" | "rules">): string[] =>
+  row.rules && row.rules.length
+    ? row.rules
+    : [
+        `Up to ${Number(row.max_photos)} photos per student`,
+        "Photos must be taken at this event",
+        "Get permission from everyone in the photo",
+      ];
 
 /** Effective status (data-model.md §6): open only if is_open AND now < deadline.
     Boundary: at the exact deadline second the event is closed (now >= deadline). */
@@ -47,6 +60,7 @@ export const toEventDto = (row: EventRow, role: Role): EventDTO => ({
   ...(role === "admin"
     ? { photo_count: Number(row.photo_count) }
     : { my_photo_count: Number(row.my_photo_count) }),
+  rules: eventRules(row),
   created_at: row.created_at,
 });
 

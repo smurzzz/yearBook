@@ -22,6 +22,7 @@ import {
 } from "../prototype/selectors";
 import { HomeSkeleton } from "../prototype/skeletons";
 import { useMockApp } from "../prototype/store";
+import { useEventsSync, useMyPhotosSync } from "../api/sync";
 import type { EventItem } from "../prototype/types";
 
 /** Student event card: cover-led, countdown chip over the photo. */
@@ -117,6 +118,9 @@ export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state, dispatch, open } = useMockApp();
+  // P6: hydrate events + my tiles from the API; no-ops in the demo build.
+  useEventsSync();
+  useMyPhotosSync();
   const photos = myPhotos(state);
   const events = eventsForStudent(state);
   const unread = unreadCount(state);

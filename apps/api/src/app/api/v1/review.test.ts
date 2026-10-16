@@ -75,6 +75,7 @@ const adminPhotoRow = (over: Partial<AdminPhotoRow> = {}): AdminPhotoRow => ({
   reviewer_id: null,
   reviewer_name: null,
   batch_size: 2,
+  batch_id: "66666666-5555-4444-3333-222222222222",
   report_id: null,
   report_reporter_id: null,
   report_reporter_name: null,

@@ -61,6 +61,7 @@ create table public.events (
   deadline timestamptz not null,
   max_photos int not null default 10 check (max_photos between 1 and 50),
   is_open boolean not null default true,
+  rules text[] not null default '{}',             -- submission rules for the detail sheet (server-managed)
   created_by text references public.users(id) on delete set null,
   reminder_sent_at timestamptz,
   created_at timestamptz not null default now(),

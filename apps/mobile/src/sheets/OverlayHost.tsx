@@ -1,5 +1,6 @@
 import React from "react";
 import { useMockApp } from "../prototype/store";
+import { api } from "../api";
 import { Dialog } from "../components/ui/Overlay";
 import { eventById } from "../prototype/data";
 import type { OverlayId } from "../prototype/types";
@@ -100,8 +101,10 @@ export const DialogHost = () => {
   const { dialog, dialogPhotoId, dialogEventId } = state;
 
   const event = dialogEventId ? eventById(dialogEventId) : null;
+  // api.md: the dialog shows the count from EventDTO.photo_count when the
+  // catalog was hydrated from the API; fixtures only have the local pool.
   const linkedCount = dialogEventId
-    ? state.photos.filter((p) => p.eventId === dialogEventId).length
+    ? (event?.photoCount ?? state.photos.filter((p) => p.eventId === dialogEventId).length)
     : 0;
 
   const config = (() => {
@@ -126,8 +129,20 @@ export const DialogHost = () => {
           title: "Delete this photo?",
           message: "It disappears from your photos and from the committee's review list right away.",
           confirmLabel: "Delete",
-          confirm: () =>
-            dialogPhotoId ? dispatch({ type: "deletePhoto", photoId: dialogPhotoId }) : closeDialog(),
+          confirm: async () => {
+            if (!dialogPhotoId) {
+              closeDialog();
+              return;
+            }
+            try {
+              // P6: storage-first delete on the server (BR-08); role picks the route.
+              if (state.role === "admin") await api.deleteAdminPhoto(dialogPhotoId);
+              else await api.deleteMyPhoto(dialogPhotoId);
+            } catch {
+              /* P8 polish: surface the failure; the local state stays for now */
+            }
+            dispatch({ type: "deletePhoto", photoId: dialogPhotoId });
+          },
         };
       case "removePhoto":
         return {
@@ -135,18 +150,39 @@ export const DialogHost = () => {
           message:
             "It comes out of the yearbook selection and the student who reported it is notified.",
           confirmLabel: "Remove photo",
-          confirm: () =>
-            dialogPhotoId
-              ? dispatch({ type: "removeReportedPhoto", photoId: dialogPhotoId })
-              : closeDialog(),
+          confirm: async () => {
+            if (!dialogPhotoId) {
+              closeDialog();
+              return;
+            }
+            const reportId =
+              state.photos.find((p) => p.id === dialogPhotoId)?.removalRequest?.id ??
+              `report-${dialogPhotoId}`;
+            try {
+              await api.resolveReport(reportId, { action: "remove" });
+            } catch {
+              /* P8 polish */
+            }
+            dispatch({ type: "removeReportedPhoto", photoId: dialogPhotoId });
+          },
         };
       case "deleteEvent":
         return {
           title: event ? `Delete ${event.name}?` : "Delete this event?",
           message: `${linkedCount} photo${linkedCount === 1 ? " is" : "s are"} linked to this event. Deleting the event also removes them from the yearbook.`,
           confirmLabel: "Delete event",
-          confirm: () =>
-            dialogEventId ? dispatch({ type: "deleteEvent", eventId: dialogEventId }) : closeDialog(),
+          confirm: async () => {
+            if (!dialogEventId) {
+              closeDialog();
+              return;
+            }
+            try {
+              await api.deleteEvent(dialogEventId);
+            } catch {
+              /* P8 polish */
+            }
+            dispatch({ type: "deleteEvent", eventId: dialogEventId });
+          },
         };
       default:
         return null;

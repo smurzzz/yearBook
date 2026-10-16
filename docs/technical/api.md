@@ -90,11 +90,11 @@ Student only. Deletes storage files of all own photos (batches of 100), then the
 
 ### GET /events
 
-Query: `q?` (name ilike). Returns all events (`EventDTO[]`), ordered: effective-open first by `deadline asc`, then closed by `deadline desc`. Student responses include `my_photo_count`; admin responses include `photo_count` (completed). `meta: { total, accepting }` for the admin header.
+Query: `q?` (name ilike). Returns all events (`EventDTO[]`), ordered: effective-open first by `deadline asc`, then closed by `deadline desc`. Student responses include `my_photo_count`; admin responses include `photo_count` (completed). `meta: { total, accepting }` for the admin header. Each event carries `rules: string[]` (submission rules for the Event Detail sheet).
 
 ### POST /events (admin)
 
-`{ name, description, cover_key, deadline, max_photos, is_open }` → `201 { data: EventDTO }`. `deadline` must be in the future on create (`422`).
+`{ name, description, cover_key, deadline, max_photos, is_open }` → `201 { data: EventDTO }`. `deadline` must be in the future on create (`422`). The server derives `rules` from `max_photos` (they are server-managed: not part of the create/update bodies).
 
 ### PATCH /events/:id (admin)
 
@@ -165,9 +165,9 @@ Only for own incomplete photos. Returns fresh `{ original, thumb }` signed URLs.
 
 ### GET /photos/mine (student)
 
-Query: `event_id?`, `limit`, `cursor`. Order `created_at desc, id desc`. `200 { data: StudentTile[], next_cursor, meta: { photos: n, events: n, event_chips: Ref[] } }` where tiles = `TileDTO`. Only completed photos of the caller.
+Query: `event_id?`, `limit`, `cursor`. Order `created_at desc, id desc`. `200 { data: TileDTO[], next_cursor, meta: { photos: n, events: n, event_chips: Ref[] } }`. Only completed photos of the caller.
 
-> **Client note (P6):** tiles are deliberately minimal (id, thumb, dimensions, `batch_size`) — they cannot fill a client-side view model on their own. The grid therefore filters **server-side** with `?event_id=` (chips come from `meta.event_chips`), and any surface that needs caption, event or uploader fetches the detail (`GET /photos/:id`) when the photo is opened. Don't add client-side filtering over tiles.
+> **Client note (P6):** `TileDTO` is enough to fill the grid view model directly — thumb, dimensions, `batch_id` + `batch_size` for the stack badge, `event` ref for chips, `created_at` for ordering/stats. Caption, category, club and rejection are *not* on the tile: the photo viewer hydrates `GET /photos/:id` when a photo is opened (and after every edit). `meta.event_chips` mirrors the distinct events, so chips need no extra request. Student tiles never carry `status`.
 
 ### GET /photos/:id (student)
 
@@ -207,7 +207,7 @@ Query params (all optional, combinable with AND): `status` (pending|approved|rej
 Response: `{ data: AdminTileDTO[], next_cursor, meta: { total, summary: { pending, approved, rejected } } }` (totals over the **filtered** set). `count_only=true` returns `{ data: [], meta }` only (for the Filter sheet button).
 Order: `created_at desc, id desc`.
 
-> **Client note (P6):** same rule as `/photos/mine` — `AdminTileDTO` carries only `status` and `reported`, so every facet (event, category, club, uploader, dates, search) is applied **server-side** and the Filter sheet's counts come from `count_only=true` + `meta.summary`. Detail sheets hydrate `GET /admin/photos/:id`.
+> **Client note (P6):** `AdminTileDTO` carries the full grid view model — status, reported, caption, category/club refs and the uploader ref — so the All-photos grid, its client-side facet filters and the filter chips hydrate straight from the list; `count_only=true` + `meta.summary` feed the Filter sheet's live counts. Detail sheets (reviewer, open report, signed original) hydrate `GET /admin/photos/:id` when a photo is opened.
 
 ### GET /admin/photos/:id
 

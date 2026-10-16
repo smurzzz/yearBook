@@ -138,7 +138,9 @@ export const deletePhotosByIds = (db: Db, photoIds: string[]): Promise<Rows> =>
 
 const TILE_COLUMNS = `
   p.id, p.width, p.height, p.thumb_path,
+  p.batch_id::text as batch_id,
   p.created_at::text as created_at,
+  e.id as event_id, e.name as event_name,
   (select count(*) from public.photos b
      where b.batch_id = p.batch_id and b.upload_completed_at is not null)::int as batch_size`;
 
@@ -156,6 +158,7 @@ export const selectMineTiles = (db: Db, q: MineQuery): Promise<Rows> =>
     ? db.unsafe(
         `select ${TILE_COLUMNS}
          from public.photos p
+         join public.events e on e.id = p.event_id
          where p.uploader_id = $1 and p.upload_completed_at is not null
            and ($2::uuid is null or p.event_id = $2::uuid)
            and (p.created_at, p.id) < ($3::timestamptz, $4::uuid)
@@ -166,6 +169,7 @@ export const selectMineTiles = (db: Db, q: MineQuery): Promise<Rows> =>
     : db.unsafe(
         `select ${TILE_COLUMNS}
          from public.photos p
+         join public.events e on e.id = p.event_id
          where p.uploader_id = $1 and p.upload_completed_at is not null
            and ($2::uuid is null or p.event_id = $2::uuid)
          order by p.created_at desc, p.id desc
@@ -196,6 +200,7 @@ export const selectEventChips = (db: Db, uploaderId: string): Promise<Rows> =>
 const DETAIL_COLUMNS = `
   p.id, p.caption, p.status, p.rejection_reason, p.rejection_note,
   p.width, p.height, p.thumb_path, p.original_path,
+  p.batch_id::text as batch_id,
   p.created_at::text as created_at,
   e.id as event_id, e.name as event_name,
   c.id as category_id, c.name as category_name,
@@ -220,6 +225,7 @@ export const selectStudentDetail = (db: Db, uploaderId: string, photoId: string)
 export const ADMIN_PHOTO_COLUMNS = `
   p.id, p.status, p.caption, p.width, p.height, p.thumb_path, p.original_path,
   p.rejection_reason, p.rejection_note,
+  p.batch_id::text as batch_id,
   p.created_at::text as created_at, p.reviewed_at::text as reviewed_at,
   p.consent_confirmed_at::text as consent_confirmed_at,
   u.id as uploader_id, u.full_name as uploader_name, u.email as uploader_email,
@@ -369,11 +375,17 @@ export const adminFilterWhere = (f: AdminFilter): { where: string; values: unkno
 };
 
 const TILE_ADMIN_COLUMNS = `
-  p.id, p.width, p.height, p.thumb_path, p.status,
+  p.id, p.width, p.height, p.thumb_path, p.status, p.caption,
+  p.batch_id::text as batch_id,
   (select count(*) from public.photos b
      where b.batch_id = p.batch_id and b.upload_completed_at is not null)::int as batch_size,
   exists(select 1 from public.reports r where r.photo_id = p.id and r.status = 'open') as reported,
-  p.created_at::text as created_at`;
+  p.created_at::text as created_at,
+  u.id as uploader_id, u.full_name as uploader_name, u.email as uploader_email,
+  u.avatar_url as uploader_avatar, u.club_id as uploader_club_id, uc.name as uploader_club_name,
+  e.id as event_id, e.name as event_name,
+  c.id as category_id, c.name as category_name,
+  cl.id as club_id, cl.name as club_name`;
 
 export interface AdminTilesQuery extends AdminFilter {
   limit: number;
@@ -386,6 +398,10 @@ export const selectAdminTiles = (db: Db, q: AdminTilesQuery): Promise<Rows> => {
   let sql = `select ${TILE_ADMIN_COLUMNS}
      from public.photos p
      join public.users u on u.id = p.uploader_id
+     left join public.clubs uc on uc.id = u.club_id
+     join public.events e on e.id = p.event_id
+     join public.categories c on c.id = p.category_id
+     left join public.clubs cl on cl.id = p.club_id
      where ${where}`;
   if (q.cursor) {
     values.push(q.cursor.t, q.cursor.id);

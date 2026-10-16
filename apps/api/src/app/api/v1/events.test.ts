@@ -51,6 +51,7 @@ const eventRow = (over: Partial<EventRow> = {}): EventRow => ({
   deadline: futureIso(),
   max_photos: 10,
   is_open: true,
+  rules: [],
   created_at: "2026-10-01T00:00:00.000Z",
   photo_count: 3,
   my_photo_count: 2,

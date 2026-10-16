@@ -1,6 +1,8 @@
 /* Mock photos bundled with the app. Keys are the same `/photos/…` paths the
    fixtures use, so components resolve them with `img(src)`.
    Requires are explicit so Metro can analyze them statically. */
+
+import type { ImageSourcePropType } from "react-native";
 const avatarAlyssa = require("../../assets/mock/avatar-alyssa.jpg");
 const avatarDaniel = require("../../assets/mock/avatar-daniel.jpg");
 const avatarJoshua = require("../../assets/mock/avatar-joshua.jpg");
@@ -55,7 +57,13 @@ export const IMAGES: Record<string, number> = {
   "/photos/photo-volleyball.jpg": photoVolleyball,
 };
 
-/** Resolve a fixture path to an ImageSource. Unknown keys fall back to the
-    first cover so a missing asset never crashes a screen. */
-export const img = (src: string): number =>
-  IMAGES[src] ?? IMAGES["/photos/cover-intramurals.jpg"];
+/** Resolve a photo path to an ImageSource:
+    - absolute URLs (signed API urls, avatars) and local files (picker output)
+      render via `{ uri }`;
+    - fixture keys `/photos/…` resolve to the bundled mock assets;
+    - unknown keys fall back to the first cover so a missing asset never
+      crashes a screen. */
+export const img = (src: string): ImageSourcePropType =>
+  /^(https?|file|content|data):/.test(src)
+    ? { uri: src }
+    : (IMAGES[src] ?? IMAGES["/photos/cover-intramurals.jpg"]);

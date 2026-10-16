@@ -52,6 +52,7 @@ export interface StudentPhotoRow {
   club_id: string | null;
   club_name: string | null;
   batch_size: number;
+  batch_id: string;
 }
 
 export interface TileRow {
@@ -59,7 +60,10 @@ export interface TileRow {
   width: number;
   height: number;
   thumb_path: string;
+  batch_id: string;
   created_at: string;
+  event_id: string;
+  event_name: string;
   batch_size: number;
 }
 
@@ -79,6 +83,7 @@ export const toStudentDto = (
   width: Number(row.width),
   height: Number(row.height),
   batch_size: Number(row.batch_size),
+  batch_id: row.batch_id,
   thumb_url: urls.thumb_url,
   original_url: urls.original_url,
   needs_replacement: row.status === "rejected",
@@ -98,6 +103,9 @@ export const toTileDto = (row: TileRow, thumbUrl: string): TileDTO => ({
   width: Number(row.width),
   height: Number(row.height),
   batch_size: Number(row.batch_size),
+  batch_id: row.batch_id,
+  event: ref(row.event_id, row.event_name),
+  created_at: row.created_at,
 });
 
 export interface PhotoDeps extends UploadDeps {
@@ -321,9 +329,23 @@ export interface AdminTileRow {
   height: number;
   thumb_path: string;
   status: string;
+  caption: string;
+  batch_id: string;
   batch_size: number;
   reported: boolean;
   created_at: string;
+  uploader_id: string;
+  uploader_name: string;
+  uploader_email: string;
+  uploader_avatar: string | null;
+  uploader_club_id: string | null;
+  uploader_club_name: string | null;
+  event_id: string;
+  event_name: string;
+  category_id: string;
+  category_name: string;
+  club_id: string | null;
+  club_name: string | null;
 }
 
 export const toAdminTileDto = (row: AdminTileRow, thumbUrl: string): AdminTileDTO => ({
@@ -332,8 +354,23 @@ export const toAdminTileDto = (row: AdminTileRow, thumbUrl: string): AdminTileDT
   width: Number(row.width),
   height: Number(row.height),
   batch_size: Number(row.batch_size),
+  batch_id: row.batch_id,
+  event: ref(row.event_id, row.event_name),
+  created_at: row.created_at,
   status: row.status as AdminTileDTO["status"],
   reported: Boolean(row.reported),
+  caption: row.caption,
+  category: ref(row.category_id, row.category_name),
+  club: row.club_id ? ref(row.club_id, row.club_name ?? "") : null,
+  uploader: {
+    id: row.uploader_id,
+    full_name: row.uploader_name,
+    email: row.uploader_email,
+    avatar_url: row.uploader_avatar,
+    club: row.uploader_club_id
+      ? ref(row.uploader_club_id, row.uploader_club_name ?? "")
+      : null,
+  },
 });
 
 export type BrowseMeta = {
@@ -482,6 +519,7 @@ export interface AdminPhotoRow {
   reviewer_id: string | null;
   reviewer_name: string | null;
   batch_size: number;
+  batch_id: string;
   report_id: string | null;
   report_reporter_id: string | null;
   report_reporter_name: string | null;
@@ -523,6 +561,7 @@ export const toAdminDto = (
   width: Number(row.width),
   height: Number(row.height),
   batch_size: Number(row.batch_size),
+  batch_id: row.batch_id,
   thumb_url: urls.thumb_url,
   original_url: urls.original_url,
   open_report: row.report_id

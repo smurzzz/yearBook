@@ -57,7 +57,10 @@ const tileRow = (id: string, over: Record<string, unknown> = {}) => ({
   width: 1920,
   height: 1280,
   thumb_path: `thumbs/${EVENT_ID}/user_1/${id}.jpg`,
+  batch_id: "66666666-5555-4444-3333-222222222222",
   created_at: "2026-10-12T00:00:00.000Z",
+  event_id: EVENT_ID,
+  event_name: "Science Fair",
   batch_size: 2,
   ...over,
 });
@@ -80,6 +83,7 @@ const detailRow = (over: Record<string, unknown> = {}) => ({
   club_id: null,
   club_name: null,
   batch_size: 2,
+  batch_id: "66666666-5555-4444-3333-222222222222",
   ...over,
 });
 
@@ -113,7 +117,9 @@ const scriptDb = (handler: (sql: string, values: unknown[]) => unknown[]) => {
 const baseDb = (
   extra: (sql: string, values: unknown[]) => unknown[] = () => [],
 ): ((sql: string, values?: unknown[]) => unknown[]) => (sql, values = []) => {
-  if (sql.includes("join public.events")) return [detailRow()];
+  // DETAIL_COLUMNS marker — the rich student detail select, never the tiles
+  // select (which now also joins events for the TileDTO event ref).
+  if (sql.includes("p.caption, p.status, p.rejection_reason")) return [detailRow()];
   if (sql.includes("p.id = $1 and p.uploader_id = $2")) return [ownedRow()];
   if (sql.includes("where exists")) return [{ id: EVENT_ID, name: "Science Fair" }];
   if (sql.includes("count(distinct")) return [{ photos: 5, events: 2 }];
@@ -164,6 +170,9 @@ describe("GET /photos/mine", () => {
       width: 1920,
       height: 1280,
       batch_size: 2,
+      batch_id: "66666666-5555-4444-3333-222222222222",
+      event: { id: EVENT_ID, name: "Science Fair" },
+      created_at: "2026-10-12T00:00:00.000Z",
     });
     expect(body.data[0]).not.toHaveProperty("status"); // TC-AUTHZ-04
     expect(body.meta).toEqual({

@@ -14,6 +14,7 @@ import { eventById } from "../prototype/data";
 import { countdown, formatShortDate } from "../prototype/format";
 import { MAX_BATCH, uploadGuard, userEventCount } from "../prototype/selectors";
 import { useMockApp } from "../prototype/store";
+import { useEventsSync, useMyPhotosSync } from "../api/sync";
 import { CATEGORIES, CLUBS } from "../prototype/types";
 
 /** Screen 3 — Upload. One scrolling screen, single submit action. */
@@ -21,6 +22,11 @@ export const UploadScreen = () => {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { state, dispatch, open } = useMockApp();
+  // P6: the guard reads real events (deadline, per-event limit) and the
+  // student's hydrated photos; the submit pipeline itself is still the demo
+  // simulation until T-042/T-043 (image pipeline + real picker) land.
+  useEventsSync();
+  useMyPhotosSync();
   const { upload } = state;
   const [captionFor, setCaptionFor] = useState<string | null>(null);
   const guard = uploadGuard(state);

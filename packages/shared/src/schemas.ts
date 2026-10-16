@@ -50,6 +50,7 @@ export const EventDTOSchema = z.object({
   status: z.enum(["open", "closed"]),
   my_photo_count: z.number().int().optional(),
   photo_count: z.number().int().optional(),
+  rules: z.array(z.string().min(1)),
   created_at: IsoSchema,
 });
 
@@ -69,6 +70,7 @@ export const StudentPhotoDTOSchema = z.object({
   width: z.number().int(),
   height: z.number().int(),
   batch_size: z.number().int(),
+  batch_id: IdSchema,
   thumb_url: z.string().url(),
   original_url: z.string().url(),
   needs_replacement: z.boolean(),
@@ -81,11 +83,26 @@ export const TileDTOSchema = z.object({
   width: z.number().int(),
   height: z.number().int(),
   batch_size: z.number().int(),
+  batch_id: IdSchema,
+  event: RefSchema,
+  created_at: IsoSchema,
+});
+
+export const AdminUploaderRefSchema = z.object({
+  id: z.string(),
+  full_name: z.string(),
+  email: z.string().email(),
+  avatar_url: z.string().url().nullable(),
+  club: RefSchema.nullable(),
 });
 
 export const AdminTileDTOSchema = TileDTOSchema.extend({
   status: z.enum(PHOTO_STATUS as unknown as [string, ...string[]]),
   reported: z.boolean(),
+  caption: z.string().max(LIMITS.CAPTION_MAX),
+  category: RefSchema,
+  club: RefSchema.nullable(),
+  uploader: AdminUploaderRefSchema,
 });
 
 export const ReportDTOSchema = z.object({
@@ -126,6 +143,7 @@ export const AdminPhotoDTOSchema = z.object({
   width: z.number().int(),
   height: z.number().int(),
   batch_size: z.number().int(),
+  batch_id: IdSchema,
   thumb_url: z.string().url(),
   original_url: z.string().url(),
   open_report: ReportDTOSchema.nullable(),

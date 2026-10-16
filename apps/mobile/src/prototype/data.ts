@@ -72,8 +72,29 @@ export const PEOPLE: Person[] = [
 export const STUDENT_ID = "mikaela";
 export const ADMIN_ID = "daniel";
 
+/* ------------------------- P6 remote lookup registry ----------------------
+   Real ids from the API (Clerk `user_…`, uuid events) register here so the
+   screens' personById/eventById lookups keep working unchanged once data is
+   hydrated from the backend. The mock build never registers — static
+   fixtures stay authoritative and tests reset via resetRegistry(). */
+const remotePeople: Record<string, Person> = {};
+const remoteEvents: Record<string, EventItem> = {};
+
+export const registerPeople = (people: Person[]): void => {
+  for (const person of people) remotePeople[person.id] = person;
+};
+
+export const registerEvents = (events: EventItem[]): void => {
+  for (const event of events) remoteEvents[event.id] = event;
+};
+
+export const resetRegistry = (): void => {
+  for (const key of Object.keys(remotePeople)) delete remotePeople[key];
+  for (const key of Object.keys(remoteEvents)) delete remoteEvents[key];
+};
+
 export const personById = (id: string): Person =>
-  PEOPLE.find((p) => p.id === id) ?? PEOPLE[0];
+  remotePeople[id] ?? PEOPLE.find((p) => p.id === id) ?? PEOPLE[0];
 
 /* --------------------------------- Events -------------------------------- */
 
@@ -144,7 +165,7 @@ export const EVENTS: EventItem[] = [
 ];
 
 export const eventById = (id: string): EventItem =>
-  EVENTS.find((e) => e.id === id) ?? EVENTS[0];
+  remoteEvents[id] ?? EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 
 /* --------------------------------- Photos -------------------------------- */
 

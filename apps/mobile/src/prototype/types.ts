@@ -32,6 +32,8 @@ export interface Person {
 }
 
 export interface RemovalRequest {
+  /** API report id — absent until a detail response hydrates it (P6). */
+  id?: string;
   reporterId: string;
   reason: string;
   notes?: string;
@@ -68,6 +70,9 @@ export interface EventItem {
   open: boolean;
   maxPhotosPerUser: number;
   rules: string[];
+  /** Completed photos linked to this event — admin surfaces (Event Form,
+   *  delete dialog) show it; comes from EventDTO.photo_count (P6). */
+  photoCount?: number;
 }
 
 export type NotificationKind = "deadline" | "review" | "removal";

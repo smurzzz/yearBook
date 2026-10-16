@@ -120,6 +120,7 @@ type EventDTO = {
   status: "open" | "closed"; // effective
   my_photo_count?: number; // student responses
   photo_count?: number; // admin responses (completed photos)
+  rules: string[]; // server-managed (derived from max_photos on create)
   created_at: ISO;
 };
 
@@ -134,6 +135,7 @@ type StudentPhotoDTO = {
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
   thumb_url: string;
   original_url: string;
   needs_replacement: boolean;
@@ -145,25 +147,36 @@ type StudentPhotoDTO = {
 };
 
 type TileDTO = {
-  // grids
+  // grids — enough to fill the client view model (P6 change)
   id: Id;
   thumb_url: string;
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
+  event: Ref;
+  created_at: ISO;
 };
-type AdminTileDTO = TileDTO & { status: PhotoStatus; reported: boolean };
+type AdminUploaderRef = {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+  club: Ref | null;
+};
+type AdminTileDTO = TileDTO & {
+  status: PhotoStatus;
+  reported: boolean;
+  caption: string;
+  category: Ref;
+  club: Ref | null;
+  uploader: AdminUploaderRef;
+};
 
 type AdminPhotoDTO = {
   id: Id;
   status: PhotoStatus;
-  uploader: {
-    id: string;
-    full_name: string;
-    email: string;
-    avatar_url: string | null;
-    club: Ref | null;
-  };
+  uploader: AdminUploaderRef;
   event: Ref;
   category: Ref;
   club: Ref | null;
@@ -180,6 +193,7 @@ type AdminPhotoDTO = {
   width: number;
   height: number;
   batch_size: number;
+  batch_id: Id;
   thumb_url: string;
   original_url: string;
   open_report: ReportDTO | null;

@@ -33,6 +33,17 @@ export const configureApi = ({ getToken, ...hooks }: ConfigureApiOptions): ApiCl
   return client;
 };
 
+/** The demo adapter (mock.ts) serves the SAME ApiClient interface from the
+ *  live prototype store, configured synchronously by the prototype provider
+ *  before any child renders. That keeps every read/mutation call site
+ *  flag-free: only the upload pipeline branches (its mock path is a
+ *  simulation by design). Also the surface T-211's mock-side contract test
+ *  validates against the shared zod schemas. */
+export const configureMockApi = (adapter: ApiClient): ApiClient => {
+  client = adapter;
+  return client;
+};
+
 /** The configured client. Throws early and loudly if a screen beat the
  *  provider to it — that is a wiring bug, not something to swallow. */
 export const api = new Proxy({} as ApiClient, {

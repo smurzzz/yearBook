@@ -49,12 +49,16 @@ const REPORT_COLUMNS = `
   r.created_at::text as created_at, r.resolved_at::text as resolved_at,
   rep.id as reporter_id, rep.full_name as reporter_name,
   p.thumb_path, p.width, p.height,
+  p.batch_id::text as batch_id,
+  p.created_at::text as photo_created_at,
+  e.id as event_id, e.name as event_name,
   (select count(*) from public.photos b
      where b.batch_id = p.batch_id and b.upload_completed_at is not null)::int as batch_size`;
 
 const REPORT_JOINS = `
   join public.users rep on rep.id = r.reporter_id
-  left join public.photos p on p.id = r.photo_id`;
+  left join public.photos p on p.id = r.photo_id
+  left join public.events e on e.id = p.event_id`;
 
 export const selectReportById = (db: Db, reportId: string): Promise<Rows> =>
   db.unsafe(

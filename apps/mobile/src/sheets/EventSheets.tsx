@@ -10,6 +10,8 @@ import { FieldLabel, DateTimeField, SwitchRow, Textarea, TextField } from "../co
 import { InlineBanner } from "../components/ui/Feedback";
 import { Surface } from "../components/ui/Surface";
 import { useMockApp } from "../prototype/store";
+import { api } from "../api";
+import { coverKeyOf, toEventItem } from "../api/dto";
 import { EVENTS, eventById } from "../prototype/data";
 import { countdown, formatDateTime } from "../prototype/format";
 import { userEventCount } from "../prototype/selectors";
@@ -181,25 +183,35 @@ export const EventFormSheet = ({ open, eventId }: { open: boolean; eventId?: str
   const save = () => {
     setTouched(true);
     if (!valid) return;
-    const event: EventItem = {
-      id: existing?.id ?? `event-${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      cover,
-      deadline,
-      open: isOpen,
-      maxPhotosPerUser: maxPhotos,
-      rules:
-        existing?.rules ?? [
-          `Up to ${maxPhotos} photos per student`,
-          "Photos must be taken at this event",
-          "Get permission from everyone in the photo",
-        ],
-    };
-    dispatch({ type: "saveEvent", event });
+    void (async () => {
+      const input = {
+        name: name.trim(),
+        description: description.trim(),
+        cover_key: coverKeyOf(cover),
+        deadline,
+        max_photos: maxPhotos,
+        is_open: isOpen,
+      };
+      let event: EventItem;
+      try {
+        // P6: the server owns the event (and derives its rules on create);
+        // the saved EventItem comes back from the API response.
+        const dto = existing
+          ? await api.updateEvent(existing.id, input)
+          : await api.createEvent(input);
+        event = toEventItem(dto);
+      } catch {
+        return; // P8 polish: surface the failure in the sheet
+      }
+      dispatch({ type: "saveEvent", event });
+    })();
   };
 
-  const linked = existing ? state.photos.filter((p) => p.eventId === existing.id).length : 0;
+  // api.md: the linked count comes from EventDTO.photo_count once the
+  // catalog is hydrated from the API; fixtures only have the local pool.
+  const linked = existing
+    ? (existing.photoCount ?? state.photos.filter((p) => p.eventId === existing.id).length)
+    : 0;
 
   return (
     <Sheet

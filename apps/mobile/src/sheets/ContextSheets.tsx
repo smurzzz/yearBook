@@ -29,6 +29,7 @@ import { ListRow, Surface } from "../components/ui/Surface";
 import { RoleBadge, UnreadDot } from "../components/ui/Chips";
 import { useMockApp } from "../prototype/store";
 import { api, isApiError, isOffline, USE_MOCK } from "../api";
+import { useNotificationsSync } from "../api/sync";
 import { CONSENT_VERSION } from "@yearbookhub/shared";
 import {
   ADMIN_ID,
@@ -234,7 +235,12 @@ export const ProfileSheet = ({ open }: { open: boolean }) => {
             label="Deadline reminders"
             description={admin ? "When an event is closing soon" : "2 days before an event closes"}
             checked={state.deadlineReminders}
-            onChange={() => dispatch({ type: "togglePreference", key: "deadlineReminders" })}
+            onChange={() => {
+              // P6: the preference persists via PATCH /me (T-095 honors it server-side).
+              const next = !state.deadlineReminders;
+              void api.patchMe({ notify_deadlines: next }).catch(() => undefined);
+              dispatch({ type: "togglePreference", key: "deadlineReminders" });
+            }}
           />
           <View style={{ height: 1, backgroundColor: t.border, opacity: 0.7, marginHorizontal: 16 }} />
           <SwitchRow
@@ -243,7 +249,11 @@ export const ProfileSheet = ({ open }: { open: boolean }) => {
               admin ? "New submissions and removal requests" : "When a photo is approved or needs replacing"
             }
             checked={state.reviewResults}
-            onChange={() => dispatch({ type: "togglePreference", key: "reviewResults" })}
+            onChange={() => {
+              const next = !state.reviewResults;
+              void api.patchMe({ notify_reviews: next }).catch(() => undefined);
+              dispatch({ type: "togglePreference", key: "reviewResults" });
+            }}
           />
         </Surface>
 
@@ -556,6 +566,8 @@ const KIND_ICON: Record<NotificationKind, React.ComponentType<{ size?: number; c
 export const NotificationsSheet = ({ open }: { open: boolean }) => {
   const t = useTheme();
   const { state, dispatch, close, open: openOverlay } = useMockApp();
+  // P6: the list hydrates from GET /notifications; no-op in the demo build.
+  useNotificationsSync();
   const unread = unreadCount(state);
 
   return (
@@ -572,7 +584,10 @@ export const NotificationsSheet = ({ open }: { open: boolean }) => {
           title="Mark all as read"
           icon={<CheckCheck size={17} color={unread === 0 ? t.mutedForeground : t.foreground} />}
           disabled={unread === 0}
-          onPress={() => dispatch({ type: "markAllRead" })}
+          onPress={() => {
+            void api.markAllNotificationsRead().catch(() => undefined);
+            dispatch({ type: "markAllRead" });
+          }}
         />
       }
     >
@@ -602,6 +617,7 @@ export const NotificationsSheet = ({ open }: { open: boolean }) => {
               <Surface key={item.id} style={{ marginBottom: 10, overflow: "hidden" }}>
                 <Pressable
                   onPress={() => {
+                    void api.markAllNotificationsRead().catch(() => undefined);
                     dispatch({ type: "markAllRead" });
                     if (item.photoId) {
                       close();

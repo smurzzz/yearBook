@@ -30,12 +30,20 @@ import {
 } from "../prototype/selectors";
 import { GridOnlySkeleton, ReviewSkeleton } from "../prototype/skeletons";
 import { useMockApp } from "../prototype/store";
+import { api } from "../api";
+import { useBrowseSync, useEventsSync, useReviewSync } from "../api/sync";
 import { AccessDeniedState, AdminBar } from "./AdminBar";
 import type { FilterState } from "../prototype/types";
 export const ReviewScreen = () => {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useMockApp();
+  // P6: the deck hydrates from GET /admin/review/queue, the All-photos grid
+  // from GET /admin/photos (both merge into the shared photo pool); the
+  // event filter and the facet filters stay client-side over the rich data.
+  useEventsSync();
+  useReviewSync();
+  useBrowseSync();
   const mode = state.allPhotosMode;
   const pending = pendingPhotos(state).length;
 
@@ -265,7 +273,15 @@ const ReviewDeck = () => {
           variant="admin"
           style={{ flex: 1 }}
           title="Approve"
-          onPress={() => dispatch({ type: "approve", photoId: photo.id })}
+          onPress={async () => {
+            // P6: the server owns the transition; the reducer mirrors it.
+            try {
+              await api.approvePhoto(photo.id);
+            } catch {
+              return;
+            }
+            dispatch({ type: "approve", photoId: photo.id });
+          }}
           icon={<Check size={18} color={t.adminForeground} />}
         />
       </View>

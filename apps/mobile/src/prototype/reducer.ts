@@ -1,4 +1,5 @@
 import { EVENTS, NOTIFICATIONS, PHOTOS, STUDENT_ID } from "./data";
+import { USE_MOCK } from "../api";
 import { MAX_BATCH, clampReviewIndex, emptyFilter, uploadGuard } from "./selectors";
 import type {
   Category,
@@ -23,6 +24,7 @@ import type {
 
 export type Action =
   | { type: "hydrate"; patch: Partial<PrototypeState> }
+  | { type: "mergePhotos"; photos: PhotoItem[] }
   | { type: "setRole"; role: Role }
   | { type: "goto"; screen: Screen }
   | { type: "setConsent"; value: boolean }
@@ -98,9 +100,9 @@ export const createInitialState = (patch: Partial<PrototypeState> = {}): Prototy
   forceUploadFailure: false,
   loading: false,
   refreshing: false,
-  photos: PHOTOS,
-  events: EVENTS,
-  notifications: NOTIFICATIONS,
+  photos: USE_MOCK ? PHOTOS : [],
+  events: USE_MOCK ? EVENTS : [],
+  notifications: USE_MOCK ? NOTIFICATIONS : [],
   allPhotosMode: "review",
   reviewIndex: 0,
   reviewEventFilter: "all",
@@ -179,6 +181,16 @@ const commitUploads = (state: PrototypeState): PrototypeState => {
 
 export const reducer = (state: PrototypeState, action: Action): PrototypeState => {
   switch (action.type) {
+    case "mergePhotos": {
+      /* P6: list syncs (review queue, browse, uploader grid) hydrate into the
+         shared admin photo pool without dropping what another screen loaded;
+         later rows win by id. */
+      const byId = new Map(action.photos.map((photo) => [photo.id, photo]));
+      return {
+        ...state,
+        photos: [...action.photos, ...state.photos.filter((photo) => !byId.has(photo.id))],
+      };
+    }
     case "hydrate":
       return { ...state, ...action.patch };
 

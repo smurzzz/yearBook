@@ -13,6 +13,7 @@ import { countdown, formatDateTime } from "../prototype/format";
 import { eventSubmissionCount } from "../prototype/selectors";
 import { ListSkeleton } from "../prototype/skeletons";
 import { useMockApp } from "../prototype/store";
+import { useEventsSync } from "../api/sync";
 import { AccessDeniedState, AdminBar } from "./AdminBar";
 import type { EventItem } from "../prototype/types";
 
@@ -62,6 +63,9 @@ export const EventsScreen = () => {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { state, dispatch, open } = useMockApp();
+  // P6: the catalog hydrates from GET /events (meta.total/accepting in HTTP);
+  // no-op in the demo build where fixtures already hold it.
+  useEventsSync();
   const [search, setSearch] = useState("");
 
   const events = useMemo(() => {
