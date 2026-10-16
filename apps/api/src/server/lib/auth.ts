@@ -36,6 +36,11 @@ export async function requireAdmin(ctx: Ctx): Promise<void> {
   if (ctx.role !== "admin") throw forbidden();
 }
 
+/** 403 FORBIDDEN for admin callers on student-only endpoints (api.md role column S). */
+export async function requireStudent(ctx: Ctx): Promise<void> {
+  if (ctx.role !== "student") throw forbidden();
+}
+
 export interface ClerkProfile {
   /** Lowercased, verified primary email — never taken from the request body. */
   email: string;

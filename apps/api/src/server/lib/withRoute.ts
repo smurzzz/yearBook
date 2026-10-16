@@ -4,7 +4,7 @@
 
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, requireClerkUserId, requireUser, type Ctx } from "./auth";
+import { requireAdmin, requireClerkUserId, requireStudent, requireUser, type Ctx } from "./auth";
 import { AppError, isAppError, toErrorEnvelope } from "./errors";
 import { env } from "./env";
 import { logRequest } from "./logger";
@@ -15,12 +15,15 @@ export type AuthMode = "public" | "clerk" | "user";
 
 export interface RouteOptions {
   auth?: AuthMode;
-  /** Admin-only routes imply auth "user" plus the role check (403 FORBIDDEN). */
-  role?: "admin";
+  /** Role gate: "admin" → every /admin/* and event mutations;
+   *  "student" → student-only endpoints (api.md role column S). Both imply auth "user". */
+  role?: "admin" | "student";
 }
 
 export interface RouteCtx extends Ctx {
   requestId: string;
+  /** Dynamic segment params (`[id]`); absent on static routes. */
+  params?: Record<string, string>;
 }
 
 export type RouteHandler = (req: NextRequest, ctx: RouteCtx) => Promise<Response> | Response;
@@ -33,7 +36,10 @@ export const list = (data: unknown[], nextCursor: string | null, meta?: Record<s
   NextResponse.json(nextCursor === null ? { data, next_cursor: null, ...(meta ? { meta } : {}) } : { data, next_cursor: nextCursor, ...(meta ? { meta } : {}) });
 
 export function withRoute(options: RouteOptions, handler: RouteHandler) {
-  return async function routeHandler(req: NextRequest): Promise<Response> {
+  return async function routeHandler(
+    req: NextRequest,
+    extra?: { params?: Promise<Record<string, string>> | Record<string, string> },
+  ): Promise<Response> {
     const requestId = req.headers.get("x-request-id") ?? randomUUID();
     const route = req.nextUrl.pathname;
     const method = req.method;
@@ -62,10 +68,13 @@ export function withRoute(options: RouteOptions, handler: RouteHandler) {
           const user = await requireUser(userId);
           ctx = { userId: user.id, role: user.role, email: user.email };
           if (options.role === "admin") await requireAdmin(ctx);
+          else if (options.role === "student") await requireStudent(ctx);
         }
       }
 
-      const res = await handler(req, { ...ctx, requestId });
+      // Next passes `{ params }` (a Promise) to dynamic segments; tests pass a plain object.
+      const params = extra?.params ? await extra.params : undefined;
+      const res = await handler(req, { ...ctx, requestId, ...(params ? { params } : {}) });
       status = res.status;
       try {
         res.headers.set("x-request-id", requestId);

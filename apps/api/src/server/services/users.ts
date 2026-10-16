@@ -1,12 +1,22 @@
 /* Users service — framework-free business rules (architecture.md §3).
    Receives an optional Db so unit tests inject a fake (no database needed). */
 
-import type { UserDTO } from "@yearbookhub/shared";
+import type { Ref, UserDTO } from "@yearbookhub/shared";
 import { getDb, type Db } from "@/server/lib/db";
 import { allowedDomains } from "@/server/lib/env";
-import { AppError } from "@/server/lib/errors";
 import { nowIso } from "@/server/lib/time";
-import { insertUser, selectIsAdminEmail, selectUserById } from "@/server/sql/users";
+import {
+  deleteUserRow,
+  insertUser,
+  selectAdminUserSummary,
+  selectIsAdminEmail,
+  selectUserById,
+  selectUserPhotoPaths,
+  updateUser,
+} from "@/server/sql/users";
+import { AppError, notFound } from "@/server/lib/errors";
+import { clerkClient } from "@clerk/nextjs/server";
+import { deleteObjects } from "@/server/lib/storage";
 
 export type Role = "student" | "admin";
 
@@ -54,6 +64,122 @@ export interface BootstrapInput {
 export interface BootstrapResult {
   user: UserDTO;
   created: boolean;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+  club: Ref | null;
+  photo_count: number;
+  event_count: number;
+}
+
+/** PATCH /me — profile + notification prefs. Admin club_id is ignored
+ *  (authentication.md §6.6 / api.md §3). */
+export async function updateUserById(
+  userId: string,
+  patch: {
+    full_name?: string;
+    club_id?: string | null;
+    notify_deadlines?: boolean;
+    notify_reviews?: boolean;
+  },
+  role: Role = "student",
+  db: Db = getDb(),
+): Promise<UserDTO> {
+  const sets = { ...patch };
+  if (role === "admin") delete sets.club_id;
+  try {
+    await updateUser(db, userId, sets);
+  } catch (err) {
+    if ((err as { code?: string }).code === "23503") {
+      throw new AppError("VALIDATION_ERROR", 422, "Check the highlighted fields.", {
+        fields: { club_id: "Unknown club" },
+      });
+    }
+    throw err;
+  }
+  const row = await getUserRow(userId, db);
+  if (!row) throw notFound();
+  return toUserDto(row);
+}
+
+const DELETE_BATCH = 100; // storage object batches (api.md §3 DELETE /me)
+
+export interface AccountDeps {
+  db?: Db;
+  deleteObjects?: (paths: string[]) => Promise<void>;
+  deleteClerkUser?: (userId: string) => Promise<void>;
+}
+
+/** DELETE /me (TC-AUTH-11): storage files first (BR-08), then the row
+ *  (cascade), then the Clerk user. A Clerk failure is logged server-side and
+ *  does not undo the already-consistent deletion. */
+export async function deleteAccount(userId: string, deps: AccountDeps = {}): Promise<void> {
+  const db = deps.db ?? getDb();
+  const removeObjects = deps.deleteObjects ?? deleteObjects;
+  const removeClerk =
+    deps.deleteClerkUser ??
+    (async (id: string) => {
+      const client = await clerkClient();
+      await client.users.deleteUser(id);
+    });
+
+  const pathRows = (await selectUserPhotoPaths(db, userId)) as unknown as Array<{
+    original_path: string;
+    thumb_path: string;
+  }>;
+  const paths = pathRows.flatMap((p) => [p.original_path, p.thumb_path]);
+  for (let i = 0; i < paths.length; i += DELETE_BATCH) {
+    try {
+      await removeObjects(paths.slice(i, i + DELETE_BATCH));
+    } catch {
+      throw new AppError(
+        "SERVICE_UNAVAILABLE",
+        503,
+        "We couldn't delete your photos. Please try again.",
+      );
+    }
+  }
+
+  await deleteUserRow(db, userId);
+
+  try {
+    await removeClerk(userId);
+  } catch {
+    // Logged without PII (error-handling.md §5); re-sign-up self-heals.
+    console.error("clerk user deletion failed after database deletion");
+  }
+}
+
+/** GET /admin/users/:id — uploader summary for the Uploader Photos sheet. */
+export async function getAdminUserSummary(
+  userId: string,
+  db: Db = getDb(),
+): Promise<AdminUserSummary> {
+  const rows = (await selectAdminUserSummary(db, userId)) as unknown as Array<{
+    id: string;
+    full_name: string;
+    email: string;
+    avatar_url: string | null;
+    club_id: string | null;
+    club_name: string | null;
+    photo_count: number;
+    event_count: number;
+  }>;
+  const row = rows[0];
+  if (!row) throw notFound();
+  return {
+    id: row.id,
+    full_name: row.full_name,
+    email: row.email,
+    avatar_url: row.avatar_url,
+    club: row.club_id ? { id: row.club_id, name: row.club_name ?? "" } : null,
+    photo_count: Number(row.photo_count),
+    event_count: Number(row.event_count),
+  };
 }
 
 /**

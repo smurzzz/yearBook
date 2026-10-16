@@ -251,4 +251,4 @@ Header `Authorization: Bearer ${CRON_SECRET}` else `401`. Runs reminders (BR-11)
 
 ## 5. Postman
 
-Create a collection with environment vars `API_URL`, `TOKEN` (copy a fresh Clerk session token from the app's debug screen in dev builds only). Keep example requests for each endpoint above.
+The collection lives at [`postman_collection.json`](./postman_collection.json) (v2.1, every endpoint above with example bodies). Environment vars: `API_URL` (`{API_ROOT}/api/v1`), `API_ROOT`, `TOKEN` (copy a fresh Clerk session token from the app's debug screen in dev builds only) and `CRON_SECRET`.

@@ -1,6 +1,8 @@
 /* Error envelope per docs/technical/error-handling.md: services throw AppError,
    withRoute maps it; unknown errors collapse to INTERNAL with a generic message. */
 
+import type { ZodError } from "zod";
+
 export const ERROR_CODES = [
   "UNAUTHENTICATED",
   "FORBIDDEN",
@@ -71,3 +73,12 @@ export const forbidden = (message = "You don't have access to this area.") =>
   new AppError("FORBIDDEN", 403, message);
 export const notFound = (message = "This item is no longer available.") =>
   new AppError("NOT_FOUND", 404, message);
+
+/** `details.fields` for 422 VALIDATION_ERROR (api.md §1: field errors from zod). */
+export const zodFieldErrors = (err: ZodError): Record<string, string> =>
+  Object.fromEntries(err.issues.map((issue) => [issue.path.join(".") || "_", issue.message]));
+
+export const validationError = (err: ZodError): AppError =>
+  new AppError("VALIDATION_ERROR", 422, "Check the highlighted fields.", {
+    fields: zodFieldErrors(err),
+  });

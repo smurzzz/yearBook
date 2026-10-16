@@ -10,9 +10,9 @@ export interface Page {
   cursor: string | null;
 }
 
-export const parsePage = (url: URL): Page => {
+export const parsePage = (url: URL, defaultLimit: number = DEFAULT_LIMIT): Page => {
   const raw = url.searchParams.get("limit");
-  let limit = DEFAULT_LIMIT;
+  let limit = defaultLimit;
   if (raw !== null) {
     const n = Number(raw);
     if (!Number.isInteger(n) || n < 1 || n > MAX_LIMIT) {

@@ -88,6 +88,10 @@ export type ReportDTO = {
   resolved_at: ISO | null;
 };
 
+/** Admin removal-request list item: ReportDTO + the photo tile (api.md §3
+ *  GET /admin/reports). `photo` is null once the photo is gone. */
+export type AdminReportDTO = ReportDTO & { photo: TileDTO | null };
+
 export type AdminPhotoDTO = {
   id: Id;
   status: PhotoStatus;

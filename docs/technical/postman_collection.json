@@ -1,0 +1,896 @@
+{
+  "info": {
+    "name": "YearbookHub API v1",
+    "description": "Every endpoint from docs/technical/api.md. Set API_URL ({API_URL}={API_ROOT}/api/v1), API_ROOT (http://localhost:3000), TOKEN (fresh Clerk session token — dev builds only) and CRON_SECRET. All routes except GET /health and GET /api/cron/daily require Authorization: Bearer {{TOKEN}}; students call student endpoints, admins call /admin/*.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "API_ROOT",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "API_URL",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "TOKEN",
+      "value": ""
+    },
+    {
+      "key": "CRON_SECRET",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{API_URL}}/health"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Me",
+      "item": [
+        {
+          "name": "GET /me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /me (first-time bootstrap)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Joshua Villanueva\",\n  \"club_id\": null,\n  \"consent\": true,\n  \"consent_version\": \"2026-10-v1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /me",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Joshua V.\",\n  \"notify_deadlines\": true,\n  \"notify_reviews\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /me (student only)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me"
+            },
+            "description": "204; deletes photos, files, then the account."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /me/push-token",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me/push-token"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expo_token\": \"ExponentPushToken[example]\",\n  \"platform\": \"android\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /me/push-token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/me/push-token"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expo_token\": \"ExponentPushToken[example]\",\n  \"platform\": \"android\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Lookups",
+      "item": [
+        {
+          "name": "GET /lookups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/lookups"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "GET /events (q?, student gets my_photo_count)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/events?q=Science"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /events/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/events/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /events (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/events"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Science Fair\",\n  \"description\": \"Annual science fair\",\n  \"cover_key\": \"science\",\n  \"deadline\": \"2026-11-20T17:00:00+08:00\",\n  \"max_photos\": 10,\n  \"is_open\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /events/:id (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/events/99999999-8888-4777-8666-555555555555"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_open\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /events/:id (admin, storage-first)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/events/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Photos — upload",
+      "item": [
+        {
+          "name": "POST /photos/upload-intents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/upload-intents"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"99999999-8888-4777-8666-555555555555\",\n  \"category_id\": \"99999999-8888-4777-8666-555555555555\",\n  \"club_id\": null,\n  \"consent\": true,\n  \"files\": [\n    {\n      \"client_id\": \"99999999-8888-4777-8666-555555555555\",\n      \"caption\": \"\",\n      \"width\": 1920,\n      \"height\": 1280,\n      \"original_bytes\": 612345,\n      \"thumb_bytes\": 41234\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            },
+            "description": "201 → { batch_id, items[client_id, photo_id, original{path,upload_url,token}, thumb] }."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /photos/complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/complete"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_ids\": [\n    \"99999999-8888-4777-8666-555555555555\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            },
+            "description": "200 → { results: [{ photo_id, ok, code? }] }; partial success is normal."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /photos/:id/upload-url",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555/upload-url"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /photos/:id/replace (rejected only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555/replace"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file\": {\n    \"client_id\": \"99999999-8888-4777-8666-555555555555\",\n    \"caption\": \"Retaken\",\n    \"width\": 1920,\n    \"height\": 1280,\n    \"original_bytes\": 612345,\n    \"thumb_bytes\": 41234\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Photos — student",
+      "item": [
+        {
+          "name": "GET /photos/mine (event_id?, limit, cursor)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/mine?limit=30"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /photos/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /photos/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caption\": \"New caption\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /photos/:id (pending/rejected only)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /photos/:id/reports",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/photos/99999999-8888-4777-8666-555555555555/reports"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"remove_me\",\n  \"notes\": \"optional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "GET /notifications (meta.unread)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/notifications"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /notifications/read-all",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/notifications/read-all"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /notifications/:id/read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/notifications/99999999-8888-4777-8666-555555555555/read"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — review",
+      "item": [
+        {
+          "name": "GET /admin/review/queue (event_id?, limit=20, cursor)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/review/queue"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/review/count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/review/count"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/photos/:id/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555/approve"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/photos/:id/reject (BR-05)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555/reject"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"blurry\",\n  \"note\": \"optional; required when reason=other\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/photos/:id/reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555/reset"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — browse",
+      "item": [
+        {
+          "name": "GET /admin/photos (filters, q, from, to, reported, count_only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos?status=pending&event_id=99999999-8888-4777-8666-555555555555&reported=true&limit=30"
+            },
+            "description": "All filters AND-combined; count_only=true returns meta only."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/photos/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/photos/:id (retag)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"99999999-8888-4777-8666-555555555555\",\n  \"category_id\": \"99999999-8888-4777-8666-555555555555\",\n  \"club_id\": null,\n  \"caption\": \"Retagged\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/photos/:id (storage-first)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/photos/99999999-8888-4777-8666-555555555555"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/users/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/users/user_abc123"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/users/:id/photos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/users/user_abc123/photos?status=approved"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — reports",
+      "item": [
+        {
+          "name": "GET /admin/reports (status=open|resolved|all)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/reports?status=open"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/reports/:id/resolve — remove",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/reports/99999999-8888-4777-8666-555555555555/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"remove\",\n  \"note\": \"optional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/reports/:id/resolve — dismiss",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/admin/reports/99999999-8888-4777-8666-555555555555/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"dismiss\"\n}",
+              "options": {
+                "raw": {
+                  "language": "application/json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cron",
+      "item": [
+        {
+          "name": "GET /api/cron/daily (Bearer CRON_SECRET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CRON_SECRET}}",
+                "type": "string"
+              }
+            ],
+            "url": {
+              "raw": "{{API_ROOT}}/api/cron/daily"
+            },
+            "description": "Outside /v1. 401 without the secret (TC-NOT-07); returns { reminders_sent, events_notified, cleaned }."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

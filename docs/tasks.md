@@ -20,7 +20,7 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 - [ ] **T-013** API lib: `env.ts` (zod-validated env), `db.ts`, `errors.ts`, `withRoute.ts`, `logger.ts`, `pagination.ts`, `time.ts` — T-010 — P0 — M — unit tests for errors and pagination
 - [ ] **T-014** API auth: `middleware.ts` (clerkMiddleware), `requireUser()`, role loading, `requireAdmin()` — T-013, T-004 — P0 — M — 401/403 tests
 - [ ] **T-015** `GET /health`, deploy API to Vercel — T-013 — P0 — S — returns `{ok:true}` in production
-- [ ] **T-016** Storage lib: bucket bootstrap, signed upload/read URL helpers, batch delete — T-012 — P0 — M — integration test with mocked client
+- [x] **T-016** Storage lib: bucket bootstrap, signed upload/read URL helpers, batch delete — T-012 — P0 — M — integration test with mocked client
 
 ## E2 Authentication & accounts
 
@@ -36,14 +36,14 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 ## E3 Events & lookups
 
 - [ ] **T-030** API `GET /lookups` — T-014 — P0 — S — categories, clubs sorted
-- [ ] **T-031** API events: `GET /events`, `GET /events/:id`, `POST`, `PATCH`, `DELETE` (storage-first delete) — T-016, T-014 — P0 — L — tests for BR-13, effective status, counts
+- [x] **T-031** API events: `GET /events`, `GET /events/:id`, `POST`, `PATCH`, `DELETE` (storage-first delete) — T-016, T-014 — P0 — L — tests for BR-13, effective status, counts
 - [ ] **T-032** Admin Events screen + Event Form sheet + Delete event dialog — T-031, T-020 — P0 — L — create/edit/delete works; empty state
 - [ ] **T-033** Student Home: greeting, event cards with countdown chip, Event Detail sheet — T-031 — P0 — M — countdown thresholds per spec §1
 
 ## E4 Upload
 
-- [ ] **T-040** API `POST /photos/upload-intents` (BR-01…BR-04, BR-09, idempotent by `client_id`) — T-016, T-031 — P0 — L — tests for every rejection code
-- [ ] **T-041** API `POST /photos/complete`, `POST /photos/:id/upload-url` — T-040 — P0 — M — verifies objects exist; handles partial failure per item
+- [x] **T-040** API `POST /photos/upload-intents` (BR-01…BR-04, BR-09, idempotent by `client_id`) — T-016, T-031 — P0 — L — tests for every rejection code
+- [x] **T-041** API `POST /photos/complete`, `POST /photos/:id/upload-url` — T-040 — P0 — M — verifies objects exist; handles partial failure per item
 - [ ] **T-042** Mobile image pipeline (`lib/image.ts`): resize/compress original + thumb, size fallback — T-020 — P0 — M — unit test with fixtures; sizes within limits
 - [ ] **T-043** Upload screen UI: picker (camera/gallery, permissions), grid, Caption sheet, event/category/club fields, consent, Submit gating — T-033, T-030 — P0 — L — matches spec S3
 - [ ] **T-044** Upload queue store + Upload Progress sheet (statuses, concurrency 3, progress, Retry, Retry all, success state, progress pill) — T-041, T-042, T-043 — P0 — L — manual test with airplane mode
@@ -51,42 +51,42 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 
 ## E5 My Photos & Viewer
 
-- [ ] **T-050** API `GET /photos/mine` (cursor, `event_id`, stats), `GET /photos/:id`, student DTO (no status) — T-041 — P0 — M — test: student never receives status or others' photos
+- [x] **T-050** API `GET /photos/mine` (cursor, `event_id`, stats), `GET /photos/:id`, student DTO (no status) — T-041 — P0 — M — test: student never receives status or others' photos
 - [ ] **T-051** My Photos screen: header stats, chips, 3-col grid, infinite scroll, empty state — T-050 — P0 — L — matches spec S4
 - [ ] **T-052** Photo Viewer route: pager, pinch-zoom, chips, caption, ⋮ menu — T-051 — P0 — L — swipe between photos
-- [ ] **T-053** API `PATCH /photos/:id`, `DELETE /photos/:id` (pending/rejected only) + Edit Photo sheet + Delete dialog — T-050 — P0 — M — approved is locked (409 `PHOTO_LOCKED`)
-- [ ] **T-054** API `POST /photos/:id/replace` + Replace flow reuse of upload pipeline; old photo deleted on complete — T-041, T-053 — P0 — M — test BR-02 excludes replaced photo
+- [x] **T-053** API `PATCH /photos/:id`, `DELETE /photos/:id` (pending/rejected only) + Edit Photo sheet + Delete dialog — T-050 — P0 — M — approved is locked (409 `PHOTO_LOCKED`)
+- [x] **T-054** API `POST /photos/:id/replace` + Replace flow reuse of upload pipeline; old photo deleted on complete — T-041, T-053 — P0 — M — test BR-02 excludes replaced photo
 - [ ] **T-055** "Needs a new photo" card in viewer — T-052 — P0 — S — only for rejected photos
 - [ ] **T-056** Home: Recent uploads row + empty states + skeletons — T-050, T-033 — P0 — S
 
 ## E6 Review
 
-- [ ] **T-060** API `GET /admin/review/queue`, `GET /admin/review/count` — T-014, T-041 — P0 — M — oldest first; excludes incomplete
-- [ ] **T-061** API `POST /admin/photos/:id/approve|reject|reset` with BR-05, notifications on reject — T-060 — P0 — M — tests incl. reason/note rules
+- [x] **T-060** API `GET /admin/review/queue`, `GET /admin/review/count` — T-014, T-041 — P0 — M — oldest first; excludes incomplete
+- [x] **T-061** API `POST /admin/photos/:id/approve|reject|reset` with BR-05, notifications on reject — T-060 — P0 — M — tests incl. reason/note rules
 - [ ] **T-062** Admin Review screen (Review mode): card, swipe, zoom, event chips, progress, empty state, tab badge — T-060 — P0 — L
 - [ ] **T-063** Reject Reason sheet + Undo toast (delayed commit, flush on blur/background) — T-061, T-062 — P0 — L — undo restores position
 
 ## E7 Browse
 
-- [ ] **T-070** API `GET /admin/photos` (filters, search, summary counts, `count_only`, `reported`) — T-061 — P0 — L — tests for each filter + combos
+- [x] **T-070** API `GET /admin/photos` (filters, search, summary counts, `count_only`, `reported`) — T-061 — P0 — L — tests for each filter + combos
 - [ ] **T-071** All photos mode: search, filter chips, grid with status icon + Reported badge, states — T-070 — P0 — L
 - [ ] **T-072** Filter sheet (all facets, live count) — T-070 — P0 — M
-- [ ] **T-073** Admin Photo Detail sheet (status actions with disabled current, ⋮ menu, edit tags, delete) + API `PATCH/DELETE /admin/photos/:id` — T-070 — P0 — L
-- [ ] **T-074** Uploader Photos sheet + API `GET /admin/users/:id`, `/photos` — T-070 — P1 — M
+- [x] **T-073** Admin Photo Detail sheet (status actions with disabled current, ⋮ menu, edit tags, delete) + API `PATCH/DELETE /admin/photos/:id` — T-070 — P0 — L
+- [x] **T-074** Uploader Photos sheet + API `GET /admin/users/:id`, `/photos` — T-070 — P1 — M
 
 ## E8 Reports
 
-- [ ] **T-080** API `POST /photos/:id/reports` (BR-07), `GET /admin/reports`, `POST /admin/reports/:id/resolve` (remove storage-first / dismiss) + notification — T-073 — P0 — L
+- [x] **T-080** API `POST /photos/:id/reports` (BR-07), `GET /admin/reports`, `POST /admin/reports/:id/resolve` (remove storage-first / dismiss) + notification — T-073 — P0 — L
 - [ ] **T-081** Request Removal sheet (student) — T-052, T-080 — P0 — M
 - [ ] **T-082** Removal request block + Dismiss/Remove footer + Remove photo dialog — T-073, T-080 — P0 — M
 
 ## E9 Notifications
 
-- [ ] **T-090** Push lib (Expo Push send, batching 100, handle `DeviceNotRegistered`) + `notifications` service — T-016 — P0 — M
-- [ ] **T-091** API `GET /notifications`, read endpoints — T-090 — P1 — S
+- [x] **T-090** Push lib (Expo Push send, batching 100, handle `DeviceNotRegistered`) + `notifications` service — T-016 — P0 — M
+- [x] **T-091** API `GET /notifications`, read endpoints — T-090 — P1 — S
 - [ ] **T-092** Mobile push registration (permissions sheet, token upload, tap handling → deep links) — T-090, T-025 — P0 — L — works on a real device with a dev build
 - [ ] **T-093** Notifications sheet + bell unread dot — T-091 — P1 — M
-- [ ] **T-094** Cron `/api/cron/daily`: reminders (BR-11) + incomplete-upload cleanup; `vercel.json` cron — T-090 — P0 — M — idempotent; secured by `CRON_SECRET`
+- [x] **T-094** Cron `/api/cron/daily`: reminders (BR-11) + incomplete-upload cleanup; `vercel.json` cron — T-090 — P0 — M — idempotent; secured by `CRON_SECRET`
 - [ ] **T-095** Profile toggles (deadline reminders, review results) honored by senders — T-092 — P1 — S
 
 ## E10 Polish & states

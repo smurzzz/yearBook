@@ -4,9 +4,15 @@
 import { LIMITS } from "@yearbookhub/shared";
 import { z } from "zod";
 import { getClerkProfile } from "@/server/lib/auth";
-import { AppError, unauthenticated } from "@/server/lib/errors";
-import { bootstrapUser, getUserRow, toUserDto } from "@/server/services/users";
-import { created, ok, withRoute } from "@/server/lib/withRoute";
+import { AppError, unauthenticated, validationError } from "@/server/lib/errors";
+import {
+  bootstrapUser,
+  deleteAccount,
+  getUserRow,
+  toUserDto,
+  updateUserById,
+} from "@/server/services/users";
+import { created, noContent, ok, withRoute } from "@/server/lib/withRoute";
 
 /** Client cannot send `role` — zod strips unknown keys; role comes from admin_emails. */
 const BodySchema = z.object({
@@ -60,4 +66,25 @@ export const POST = withRoute({ auth: "clerk" }, async (req, ctx) => {
   });
 
   return result.created ? created(result.user) : ok(result.user);
+});
+
+/** PATCH /me — profile + notification prefs (T-026); admin club_id ignored. */
+export const PatchSchema = z.object({
+  full_name: z.string().trim().min(1).max(LIMITS.FULL_NAME_MAX).optional(),
+  club_id: z.string().uuid().nullable().optional(),
+  notify_deadlines: z.boolean().optional(),
+  notify_reviews: z.boolean().optional(),
+});
+
+export const PATCH = withRoute({ auth: "user" }, async (req, ctx) => {
+  const parsed = PatchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) throw validationError(parsed.error);
+  const user = await updateUserById(ctx.userId!, parsed.data, ctx.role ?? "student");
+  return ok(user);
+});
+
+/** DELETE /me — student only; storage-first account removal (TC-AUTH-11). */
+export const DELETE = withRoute({ role: "student" }, async (_req, ctx) => {
+  await deleteAccount(ctx.userId!);
+  return noContent();
 });

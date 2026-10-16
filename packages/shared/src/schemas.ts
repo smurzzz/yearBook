@@ -90,6 +90,10 @@ export const ReportDTOSchema = z.object({
   resolved_at: IsoSchema.nullable(),
 });
 
+export const AdminReportDTOSchema = ReportDTOSchema.extend({
+  photo: TileDTOSchema.nullable(),
+});
+
 export const AdminPhotoDTOSchema = z.object({
   id: IdSchema,
   status: z.enum(PHOTO_STATUS as unknown as [string, ...string[]]),
