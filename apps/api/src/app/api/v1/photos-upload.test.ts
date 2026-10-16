@@ -117,7 +117,7 @@ beforeEach(() => {
   role = "student";
   signUploadUrlMock.mockImplementation(async (path: string) => ({
     path,
-    upload_url: `http://127.0.0.1:54321/storage/v1/object/sign/upload/yearbook-photos/${path}?token=t`,
+    upload_url: `http://127.0.0.1:54321/storage/v1/object/upload/sign/yearbook-photos/${path}`,
     token: "t",
   }));
   objectExistsMock.mockResolvedValue(true);
