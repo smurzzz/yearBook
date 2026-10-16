@@ -11,6 +11,8 @@ import { useTheme } from "../theme/useTheme";
 import { typography } from "../theme/tokens";
 import { img } from "../prototype/assets";
 import { SCHOOL_DOMAIN, SCHOOL_NAME } from "../prototype/data";
+import { api, isApiError, isMaintenance, isOffline, USE_MOCK } from "../api";
+import { useSession } from "../session";
 import { useMockApp } from "../prototype/store";
 import { DevSheet } from "./DevSheet";
 
@@ -23,9 +25,11 @@ export const SignInScreen = () => {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { state, dispatch, open } = useMockApp();
+  const session = useSession();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const [logoTaps, setLogoTaps] = useState(0);
+  const [signingIn, setSigningIn] = useState(false);
 
   if (state.authIssue === "maintenance") {
     return (
@@ -51,6 +55,53 @@ export const SignInScreen = () => {
     setPickerOpen(false);
     dispatch({ type: "hydrate", patch });
     dispatch({ type: "googleSignIn" });
+  };
+
+  /* Mock build keeps the dev picker (P2A). Real build runs Google SSO through
+     Clerk, then GET /me decides between Home and First-Time Setup (T-021/T-023):
+     404 USER_NOT_FOUND means no users row yet, which is exactly the setup gate. */
+  const continueWithGoogle = async () => {
+    if (USE_MOCK) {
+      setPickerOpen(true);
+      return;
+    }
+    setSigningIn(true);
+    try {
+      await session.signInWithGoogle();
+      try {
+        const user = await api.getMe();
+        dispatch({
+          type: "hydrate",
+          patch: {
+            role: user.role,
+            firstTimeSetupDone: true,
+            studentName: user.full_name,
+            studentClub: (user.club?.name ?? null) as typeof state.studentClub,
+          },
+        });
+      } catch (error) {
+        const code = isApiError(error) ? error.code : null;
+        if (code === "USER_NOT_FOUND") {
+          dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
+        } else if (code === "EMAIL_DOMAIN_NOT_ALLOWED") {
+          await session.signOut();
+          dispatch({ type: "authIssue", issue: "nonSchool" });
+          return;
+        } else {
+          throw error;
+        }
+      }
+      dispatch({ type: "googleSignIn" });
+    } catch (error) {
+      if ((error as Error)?.message === "SSO_CANCELLED") dispatch({ type: "googleCancel" });
+      else if (isMaintenance(error)) dispatch({ type: "authIssue", issue: "maintenance" });
+      else if (isOffline(error)) {
+        dispatch({ type: "setNetwork", network: "offline" });
+        dispatch({ type: "googleCancel" });
+      } else dispatch({ type: "authIssue", issue: "cancelled" });
+    } finally {
+      setSigningIn(false);
+    }
   };
 
   return (
@@ -136,8 +187,8 @@ export const SignInScreen = () => {
           block
           size="lg"
           style={{ marginTop: 16 }}
-          disabled={!canContinue}
-          onPress={() => setPickerOpen(true)}
+          disabled={!canContinue || signingIn}
+          onPress={() => void continueWithGoogle()}
           icon={<GoogleMark size={18} />}
           title="Continue with Google"
         />

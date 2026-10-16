@@ -21,6 +21,7 @@ import {
 import type { Href } from "expo-router";
 import { useTheme } from "@/theme/useTheme";
 import { PrototypeProvider, useMockApp } from "@/prototype/store";
+import { SessionProvider } from "@/session";
 import { DialogHost, OverlayHost } from "@/sheets/OverlayHost";
 import { ToastHost } from "@/components/ui/Overlay";
 import type { Screen } from "@/prototype/types";
@@ -130,7 +131,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <PrototypeProvider>
-          <RootNavigator />
+          {/* Session above the navigator: it wires the API client to Clerk
+              (or to the mock session) before any screen can dispatch. */}
+          <SessionProvider>
+            <RootNavigator />
+          </SessionProvider>
         </PrototypeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -167,6 +167,8 @@ Only for own incomplete photos. Returns fresh `{ original, thumb }` signed URLs.
 
 Query: `event_id?`, `limit`, `cursor`. Order `created_at desc, id desc`. `200 { data: StudentTile[], next_cursor, meta: { photos: n, events: n, event_chips: Ref[] } }` where tiles = `TileDTO`. Only completed photos of the caller.
 
+> **Client note (P6):** tiles are deliberately minimal (id, thumb, dimensions, `batch_size`) — they cannot fill a client-side view model on their own. The grid therefore filters **server-side** with `?event_id=` (chips come from `meta.event_chips`), and any surface that needs caption, event or uploader fetches the detail (`GET /photos/:id`) when the photo is opened. Don't add client-side filtering over tiles.
+
 ### GET /photos/:id (student)
 
 `200 { data: StudentPhotoDTO }`. `404` if not found or not owned. Includes signed URLs.
@@ -204,6 +206,8 @@ Query: `event_id?`, `limit` (default 20), `cursor`. Pending completed photos, `c
 Query params (all optional, combinable with AND): `status` (pending|approved|rejected), `event_id`, `category_id`, `club_id`, `uploader_id`, `q` (caption or uploader name, ≤ 80), `from`, `to` (ISO, on `created_at`; `to` inclusive end of day Manila), `reported=true`, `limit`, `cursor`, `count_only=true`.
 Response: `{ data: AdminTileDTO[], next_cursor, meta: { total, summary: { pending, approved, rejected } } }` (totals over the **filtered** set). `count_only=true` returns `{ data: [], meta }` only (for the Filter sheet button).
 Order: `created_at desc, id desc`.
+
+> **Client note (P6):** same rule as `/photos/mine` — `AdminTileDTO` carries only `status` and `reported`, so every facet (event, category, club, uploader, dates, search) is applied **server-side** and the Filter sheet's counts come from `count_only=true` + `meta.summary`. Detail sheets hydrate `GET /admin/photos/:id`.
 
 ### GET /admin/photos/:id
 

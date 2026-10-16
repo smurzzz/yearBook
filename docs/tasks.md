@@ -28,7 +28,7 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 - [ ] **T-021** Sign In screen with consent gate + Google SSO (`useSSO`) — T-020, T-004 — P0 — M — real Google sign-in on an Android dev build
 - [ ] **T-022** API `GET /me`, `POST /me` (bootstrap: domain check, admin_emails role, consent) — T-014 — P0 — M — tests: domain blocked, admin matched, duplicate create idempotent
 - [ ] **T-023** First-Time Setup sheet + role routing guard (student/admin groups, permission-denied state) — T-021, T-022 — P0 — M — admin lands on Review, student on Home
-- [ ] **T-024** API client with token attach, error envelope parsing, 401 → session-expired state — T-020 — P0 — M — unit tests
+- [x] **T-024** API client with token attach, error envelope parsing, 401 → session-expired state — T-020 — P0 — M — unit tests
 - [ ] **T-025** Profile sheet (read-only part), Log out dialog (+ push token delete) — T-023 — P0 — M — logging out returns to Sign In
 - [ ] **T-026** `PATCH /me`, `PUT/DELETE /me/push-token`, `DELETE /me` + edit profile UI + Delete account flow — T-022, T-025 — P1 — M — account deletion removes photos + files
 - [ ] **T-027** Privacy Notice and Help sheets (static content) — T-020 — P1 — S — text per spec/privacy
@@ -113,3 +113,11 @@ Pick the first unchecked task whose dependencies are checked. Tick the box in th
 - [ ] **T-152** Seed demo data (1 admin, 2 students, 3 events, ~20 photos, 1 rejected, 1 reported) — T-150 — P0 — M
 - [ ] **T-153** User guide (students + admins), final report diagrams (use-case, ERD, flow) — T-151 — P0 — M
 - [ ] **T-154** Defense rehearsal using the demo script (`plan.md` §8) — T-152 — P0 — S
+
+## E13 Integration (P6, mock → real)
+
+- [x] **T-210** Mobile HTTP layer `src/api/` — `client.ts` (token attach, error envelope, GET retry 500 ms/1.5 s, 401 → fresh token → session expired, offline/maintenance callbacks), `endpoints.ts` + `http.ts` (every `api.md` endpoint typed with the shared DTOs) — T-024 — P0 — L — 21 transport unit tests
+- [ ] **T-211** Contract tests: shared zod schemas vs real responses **and** mock responses — T-210 — P0 — M — real side green (`api/v1/contract.test.ts`); mock side pending with the store wiring (T-213)
+- [ ] **T-212** Development build (`eas build --profile development --platform android`) with `EXPO_PUBLIC_API_URL` on the laptop LAN IP — T-006, T-210 — P0 — M — installable APK that reaches `localhost:3000` health
+- [ ] **T-213** Slice integration against real data — Auth (done: Clerk SSO + `GET/POST /me` bootstrap) → Events → Upload (real signed-URL PUT) → My Photos/Viewer → Review → Browse → Reports → Notifications; run the matching test cases after each slice — T-211, T-212 — P0 — L — P6 gate test cases pass on a phone
+- [ ] **T-214** Exclude mock code and bundled mock assets from production builds (flag-guarded imports) — T-213 — P1 — S — release bundle has no `assets/mock` payload

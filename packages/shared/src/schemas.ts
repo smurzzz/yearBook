@@ -9,6 +9,16 @@ import {
 } from "./constants";
 
 export const IdSchema = z.string();
+
+/** The single error shape every endpoint returns (error-handling.md §1).
+ *  Both the app's transport and the contract tests parse through it. */
+export const ErrorEnvelopeSchema = z.object({
+  error: z.object({
+    code: z.string().min(1),
+    message: z.string(),
+    details: z.record(z.unknown()).optional(),
+  }),
+});
 export const IsoSchema = z.string().datetime({ offset: true }).or(z.string());
 
 export const RefSchema = z.object({ id: IdSchema, name: z.string() });
@@ -140,7 +150,8 @@ export const MeCreateSchema = z.object({
   full_name: z.string().min(1).max(LIMITS.FULL_NAME_MAX),
   club_id: z.string().uuid().nullable().optional(),
   consent: z.literal(true),
-  NOTIFICATION_TYPES: z.string(),
+  /** Stored on the row with `consented_at` (api.md §3 POST /me). */
+  consent_version: z.string().min(1),
 });
 
 export const MePatchSchema = z.object({

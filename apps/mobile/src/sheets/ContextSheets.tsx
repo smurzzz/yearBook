@@ -24,10 +24,12 @@ import { Sheet } from "../components/ui/Overlay";
 import { Button } from "../components/ui/Button";
 import { Avatar } from "../components/ui/Media";
 import { FieldLabel, Select, SwitchRow, TextField } from "../components/ui/Fields";
-import { EmptyState } from "../components/ui/Feedback";
+import { EmptyState, InlineBanner } from "../components/ui/Feedback";
 import { ListRow, Surface } from "../components/ui/Surface";
 import { RoleBadge, UnreadDot } from "../components/ui/Chips";
 import { useMockApp } from "../prototype/store";
+import { api, isApiError, isOffline, USE_MOCK } from "../api";
+import { CONSENT_VERSION } from "@yearbookhub/shared";
 import {
   ADMIN_ID,
   FIRST_TIME_SETUP_CLUBS_NOTE,
@@ -52,7 +54,49 @@ export const FirstTimeSetupSheet = ({ open }: { open: boolean }) => {
   const { state, dispatch, close } = useMockApp();
   const [name, setName] = useState(state.studentName);
   const [club, setClub] = useState<string | null>(state.studentClub);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const person = personById(STUDENT_ID);
+
+  /* Real build: this is POST /me — the bootstrap that stores consent, resolves
+     the club id, and decides the role server-side (api.md §3, authentication.md §6). */
+  const submitSetup = async () => {
+    const fullName = name.trim() || state.studentName;
+    if (USE_MOCK) {
+      dispatch({ type: "finishSetup", name: fullName, club: club as never });
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const lookups = await api.lookups();
+      const user = await api.createMe({
+        full_name: fullName,
+        club_id: lookups.clubs.find((c) => c.name === club)?.id ?? null,
+        consent: true,
+        consent_version: CONSENT_VERSION,
+      });
+      dispatch({
+        type: "finishSetup",
+        name: user.full_name,
+        club: (user.club?.name ?? null) as never,
+      });
+    } catch (error) {
+      const code = isApiError(error) ? error.code : null;
+      if (code === "EMAIL_DOMAIN_NOT_ALLOWED") {
+        dispatch({ type: "signOut" });
+        dispatch({ type: "authIssue", issue: "nonSchool" });
+        close();
+      } else if (isOffline(error)) {
+        dispatch({ type: "setNetwork", network: "offline" });
+        setSaveError("No connection. Check your network and try again.");
+      } else {
+        setSaveError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Sheet
@@ -66,17 +110,15 @@ export const FirstTimeSetupSheet = ({ open }: { open: boolean }) => {
           block
           size="lg"
           title="Get started"
-          onPress={() =>
-            dispatch({
-              type: "finishSetup",
-              name: name.trim() || state.studentName,
-              club: club as never,
-            })
-          }
+          disabled={saving}
+          onPress={() => void submitSetup()}
         />
       }
     >
       <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        {saveError ? (
+          <InlineBanner tone="error" title="Setup" message={saveError} style={{ marginBottom: 12 }} />
+        ) : null}
         <View
           style={{
             flexDirection: "row",
