@@ -11,7 +11,6 @@ const BAPI = "https://api.clerk.com/v1";
 const raw = fs.readFileSync(".env.local", "utf8");
 const line = (k) => raw.split(/\r?\n/).find((l) => l.startsWith(k + "="));
 const SK = line("CLERK_SECRET_KEY").slice("CLERK_SECRET_KEY=".length);
-const CK = { Authorization: "Bearer " + SK };
 
 const STUDENT_ID = "user_3Kn6gBTHn689FLUzV4YacJLLzTv";
 const ADMIN_ID = "user_3Kn6gFzHuU7aVRlgJ1SghrKAOOc";
