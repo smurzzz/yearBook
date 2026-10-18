@@ -75,7 +75,10 @@ const useRouteSync = () => {
       return;
     }
 
-    if (group !== "(auth)") router.replace(PATH[screen] ?? PATH.home);
+    /* Signed-in students must also leave the auth group: first-time setup
+       completes while the router still sits on /sign-in, so routing only
+       when already inside the student tabs left new students stuck there. */
+    router.replace(PATH[screen] ?? PATH.home);
   }, [dispatch, router, screen, segments, state.role, state.signedIn]);
 };
 

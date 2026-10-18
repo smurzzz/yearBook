@@ -59,6 +59,12 @@ export const Sheet = ({
     ]).start();
   }, [fade, open, translateY]);
 
+  /* Mounted only while open: an always-rendered transparent Modal is a
+     full-screen touch sink — its invisible backdrop swallows every tap on
+     the screen behind it (DD-018 keeps one host for all sheets; each one
+     must render nothing while closed). */
+  if (!open) return null;
+
   return (
     <Modal visible transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={FILL}>
