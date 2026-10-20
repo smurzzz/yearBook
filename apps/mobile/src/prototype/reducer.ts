@@ -15,6 +15,8 @@ import type {
   Role,
   Screen,
   ToastState,
+  UploadItem,
+  UploadItemStatus,
 } from "./types";
 
 /* =========================================================================
@@ -59,6 +61,7 @@ export type Action =
   | { type: "patchFilterDraft"; patch: Partial<FilterState> }
   | { type: "resetFilter" }
   | { type: "addUploadItems"; srcs: string[] }
+  | { type: "addUploadFiles"; items: UploadItem[] }
   | { type: "removeUploadItem"; id: string }
   | { type: "setUploadCaption"; id: string; caption: string }
   | { type: "setCaptionForSrc"; src: string; caption: string }
@@ -66,6 +69,9 @@ export type Action =
   | { type: "toggleUploadConsent" }
   | { type: "startUpload" }
   | { type: "uploadTick" }
+  | { type: "setUploadItemProgress"; id: string; status: UploadItemStatus; progress: number; failNote?: string }
+  | { type: "setUploadPhase"; phase: PrototypeState["uploadPhase"] }
+  | { type: "setBatchMessage"; message: string | null }
   | { type: "retryFailed" }
   | { type: "resetUpload" }
   | { type: "setNetwork"; network: "online" | "offline" }
@@ -148,6 +154,14 @@ const removePhotos = (photos: PhotoItem[], ids: string[]) =>
   photos.filter((p) => !ids.includes(p.id));
 
 const screensForRole = (role: Role): Screen => (role === "student" ? "home" : "review");
+
+/** The note under the photo grid. Photos that did not fit the batch are
+ *  named — a silent drop would look like a bug. */
+const addedMessage = (added: number, dropped: number): string => {
+  const head = `${added} photo${added === 1 ? "" : "s"} added.`;
+  if (!dropped) return `${head} Large files are resized automatically before upload.`;
+  return `${head} ${dropped} more ${dropped === 1 ? "was" : "were"} left out — a batch holds up to ${MAX_BATCH} photos.`;
+};
 
 /* ------------------------------ Upload model ----------------------------- */
 
@@ -477,7 +491,7 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
       return {
         ...state,
         overlays: drop(drop(drop(state.overlays, "libraryPicker"), "sourceChooser"), "galleryPermission"),
-        batchMessage: `${srcs.length} photo${srcs.length === 1 ? "" : "s"} added. Large files are resized automatically before upload.`,
+        batchMessage: addedMessage(srcs.length, action.srcs.length - srcs.length),
         upload: {
           ...state.upload,
           items: [
@@ -491,6 +505,23 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
             })),
           ],
         },
+      };
+    }
+
+    case "addUploadFiles": {
+      const room = Math.max(0, MAX_BATCH - state.upload.items.length);
+      const items = action.items.slice(0, room);
+      if (!items.length) {
+        return {
+          ...state,
+          batchMessage: `A batch holds up to ${MAX_BATCH} photos. Submit these first, then add more.`,
+        };
+      }
+      return {
+        ...state,
+        overlays: drop(drop(drop(state.overlays, "libraryPicker"), "sourceChooser"), "galleryPermission"),
+        batchMessage: addedMessage(items.length, action.items.length - items.length),
+        upload: { ...state.upload, items: [...state.upload.items, ...items] },
       };
     }
 
@@ -560,8 +591,10 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
             ...item,
             status: "waiting" as const,
             progress: 0,
-          failNote: undefined,
-          willFail: state.forceUploadFailure || i === 1,
+            failNote: undefined,
+            /* The forced failure belongs to the demo simulation: the real
+               pipeline fails only when the server or the network does. */
+            willFail: USE_MOCK && (state.forceUploadFailure || i === 1),
           })),
         },
         overlays: ensure(state.overlays, "uploadProgress"),
@@ -591,6 +624,30 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
       return next;
     }
 
+    case "setUploadItemProgress":
+      return {
+        ...state,
+        upload: {
+          ...state.upload,
+          items: state.upload.items.map((item) =>
+            item.id === action.id
+              ? {
+                  ...item,
+                  status: action.status,
+                  progress: action.progress,
+                  failNote: action.failNote,
+                }
+              : item,
+          ),
+        },
+      };
+
+    case "setUploadPhase":
+      return { ...state, uploadPhase: action.phase };
+
+    case "setBatchMessage":
+      return { ...state, batchMessage: action.message };
+
     case "retryFailed": {
       if (state.network === "offline") return { ...state, uploadError: "offline" };
       const items = state.upload.items.map((item) =>
@@ -612,7 +669,10 @@ export const reducer = (state: PrototypeState, action: Action): PrototypeState =
       };
 
     case "setNetwork":
-      return { ...state, network: action.network };
+      /* Idempotent on purpose: the transport reports "the server answered" on
+         every successful request, so returning a new object each time would
+         re-render every subscriber for nothing. Same value → same state. */
+      return state.network === action.network ? state : { ...state, network: action.network };
 
     case "setLoadError":
       return { ...state, loadError: action.value };

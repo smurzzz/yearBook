@@ -21,13 +21,9 @@ import { configureApi } from "../api";
 import { useMockApp } from "../prototype/store";
 import { SessionContext, type SessionApi } from "./context";
 
-/* Runs at load in BOTH windows: the opener (no session in progress → no-op)
-   and the /callback popup (posts the redirect URL back). Log the verdict —
-   a silent failure here is indistinguishable from a cancelled sheet. */
-const completionResult = WebBrowser.maybeCompleteAuthSession();
-if (typeof window !== "undefined") {
-  console.warn("[auth] maybeCompleteAuthSession", completionResult, window.location.href);
-}
+/* The /callback screen handles completing the auth session via useEffect.
+   Do NOT call maybeCompleteAuthSession at module load — it conflicts with
+   the callback screen and causes SSO_CANCELLED errors and long wait times. */
 
 export const tokenCache: TokenCache = {
   getToken: (key) => SecureStore.getItemAsync(key),
@@ -85,6 +81,7 @@ const ClerkSession = ({ children }: { children: React.ReactNode }) => {
       getToken: async (opts) => (await getToken?.({ skipCache: opts?.skipCache })) ?? null,
       onUnauthorized: () => dispatch({ type: "sessionExpired" }),
       onOffline: () => dispatch({ type: "setNetwork", network: "offline" }),
+      onOnline: () => dispatch({ type: "setNetwork", network: "online" }),
       onMaintenance: () => dispatch({ type: "authIssue", issue: "maintenance" }),
     });
 

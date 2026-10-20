@@ -507,7 +507,7 @@ export const UploadRow = ({
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
           <Text numberOfLines={1} style={[typography.label, { fontWeight: "600", color: t.foreground, flex: 1 }]}>
-            IMG_{4200 + index}.HEIC
+            {item.name ?? `IMG_${4200 + index}.HEIC`}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <StatusIcon size={14} color={statusColor} opacity={busy ? 0.6 : 1} />

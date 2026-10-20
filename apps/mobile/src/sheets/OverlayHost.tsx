@@ -1,6 +1,8 @@
 import React from "react";
 import { useMockApp } from "../prototype/store";
 import { api } from "../api";
+import { useSession } from "../session";
+import { unregisterPushToken } from "../lib/push";
 import { Dialog } from "../components/ui/Overlay";
 import { eventById } from "../prototype/data";
 import type { OverlayId } from "../prototype/types";
@@ -98,6 +100,7 @@ export const OverlayHost = () => {
 /** Routes the active dialog id to its copy and dispatch (spec §7). */
 export const DialogHost = () => {
   const { state, dispatch, closeDialog } = useMockApp();
+  const session = useSession();
   const { dialog, dialogPhotoId, dialogEventId } = state;
 
   const event = dialogEventId ? eventById(dialogEventId) : null;
@@ -114,7 +117,15 @@ export const DialogHost = () => {
           title: "Log out?",
           message: "You will need to sign in with your school Google account again.",
           confirmLabel: "Log out",
-          confirm: () => dispatch({ type: "signOut" }),
+          confirm: async () => {
+            /* Signing out is a server action, not a local one: the device push
+               token belongs to the session, and the Clerk session must not
+               outlive the sign-out (otherwise the next launch comes back
+               already signed in). */
+            await unregisterPushToken();
+            await session.signOut().catch(() => undefined);
+            dispatch({ type: "signOut" });
+          },
         };
       case "deleteAccount":
         return {
@@ -122,7 +133,17 @@ export const DialogHost = () => {
           message:
             "Every photo you uploaded is removed, including the ones already approved for the yearbook. This cannot be undone.",
           confirmLabel: "Delete account",
-          confirm: () => dispatch({ type: "deleteAccount" }),
+          confirm: async () => {
+            try {
+              await api.deleteMe();
+            } catch {
+              /* The server keeps the row if this fails; the local session still
+                 ends so the student is not left in a half-signed-in state. */
+            }
+            await unregisterPushToken().catch(() => undefined);
+            await session.signOut().catch(() => undefined);
+            dispatch({ type: "deleteAccount" });
+          },
         };
       case "deletePhoto":
         return {

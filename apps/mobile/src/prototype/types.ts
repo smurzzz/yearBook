@@ -141,15 +141,32 @@ export interface ToastState {
 
 export type UploadItemStatus = "waiting" | "compressing" | "uploading" | "done" | "failed";
 
+/** One prepared file on disk — what the signed upload PUT sends. */
+export interface UploadFileRef {
+  /** Local file URI (file:// on device, blob:/data: on web). */
+  uri: string;
+  width: number;
+  height: number;
+  bytes: number;
+}
+
 export interface UploadItem {
   id: string;
   src: string;
+  /** Original file name (real build); the list falls back to a demo name. */
+  name?: string;
   caption: string;
   status: UploadItemStatus;
   progress: number;
   failNote?: string;
   /** Prototype-only: this item fails once at 60%, then succeeds on Retry. */
   willFail?: boolean;
+  /** Real build: the idempotency key of this photo. Stable across retries,
+   *  so the server recognises the retry as the same upload. */
+  clientId?: string;
+  /** Real build: the prepared files to upload (demo build has none — the
+   *  fixtures are already "uploaded" by the simulation). */
+  files?: { original: UploadFileRef; thumb: UploadFileRef };
 }
 
 export interface UploadDraft {

@@ -29,6 +29,7 @@ import { ListRow, Surface } from "../components/ui/Surface";
 import { RoleBadge, UnreadDot } from "../components/ui/Chips";
 import { useMockApp } from "../prototype/store";
 import { useSession } from "../session";
+import { registerPushToken } from "../lib/push";
 import { api, isApiError, isOffline, USE_MOCK } from "../api";
 import { useNotificationsSync } from "../api/sync";
 import { CONSENT_VERSION } from "@yearbookhub/shared";
@@ -492,12 +493,16 @@ export const NotificationPermissionSheet = ({ open }: { open: boolean }) => {
             style={{ flex: 1 }}
             title="Not now"
             onPress={() => dispatch({ type: "setNotifications", enabled: false })}
-          />
-          <Button
-            style={{ flex: 1 }}
-            title="Allow"
-            onPress={() => dispatch({ type: "setNotifications", enabled: true })}
-          />
+          />            <Button
+              style={{ flex: 1 }}
+              title="Allow"
+              onPress={() => {
+                // The token goes to the API so the committee's deadline
+                // reminders and review results can reach this device.
+                void registerPushToken();
+                dispatch({ type: "setNotifications", enabled: true });
+              }}
+            />
         </View>
       }
     >
@@ -572,7 +577,8 @@ export const NotificationsSheet = ({ open }: { open: boolean }) => {
   const t = useTheme();
   const { state, dispatch, close, open: openOverlay } = useMockApp();
   // P6: the list hydrates from GET /notifications; no-op in the demo build.
-  useNotificationsSync();
+  // Only while the sheet is open — a closed sheet must not spend a request.
+  useNotificationsSync(open);
   const unread = unreadCount(state);
 
   return (

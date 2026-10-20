@@ -18,17 +18,16 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from "@expo-google-fonts/plus-jakarta-sans";
-import type { Href } from "expo-router";
 import { useTheme } from "@/theme/useTheme";
 import { PrototypeProvider, useMockApp } from "@/prototype/store";
 import { SessionProvider } from "@/session";
 import { DialogHost, OverlayHost } from "@/sheets/OverlayHost";
 import { ToastHost } from "@/components/ui/Overlay";
-import type { Screen } from "@/prototype/types";
+import { SessionBridge } from "@/session/bridge";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-const PATH: Record<Screen, Href> = {
+const PATH: Record<string, string> = {
   signin: "/(auth)/sign-in",
   home: "/(student)/home",
   upload: "/(student)/upload",
@@ -37,8 +36,7 @@ const PATH: Record<Screen, Href> = {
   events: "/(admin)/events",
 };
 
-/**
- * Keeps the router and the prototype state in step: guards (sign-in gate,
+/** Keeps the router and the prototype state in step: guards (sign-in gate,
  * role gate), then two-way syncs the student/admin tab routes with
  * `state.screen`. Everything no-ops when already consistent, so pushes from
  * screens (`router.push("/photo/id")`) are free to lead.
@@ -54,18 +52,13 @@ const useRouteSync = () => {
     const tab = segments[1];
 
     if (!state.signedIn) {
-      if (group !== "(auth)") router.replace(PATH.signin);
+      if (group !== "(auth)") (router as any).replace(PATH.signin);
       return;
     }
     if (group === "photo") return;
 
     if (state.role === "admin") {
-      if (group !== "(admin)") {
-        router.replace(screen === "events" ? PATH.events : PATH.review);
-        return;
-      }
-      const target = tab === "events" ? "events" : "review";
-      if (screen !== target) dispatch({ type: "goto", screen: target });
+      if (group !== "(admin)") (router as any).replace(screen === "events" ? PATH.events : PATH.review);
       return;
     }
 
@@ -78,7 +71,7 @@ const useRouteSync = () => {
     /* Signed-in students must also leave the auth group: first-time setup
        completes while the router still sits on /sign-in, so routing only
        when already inside the student tabs left new students stuck there. */
-    router.replace(PATH[screen] ?? PATH.home);
+    (router as any).replace(PATH[screen] ?? PATH.home);
   }, [dispatch, router, screen, segments, state.role, state.signedIn]);
 };
 
@@ -135,8 +128,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <PrototypeProvider>
           {/* Session above the navigator: it wires the API client to Clerk
-              (or to the mock session) before any screen can dispatch. */}
+            (or to the mock session) before any screen can dispatch. */}
           <SessionProvider>
+            <SessionBridge />
             <RootNavigator />
           </SessionProvider>
         </PrototypeProvider>

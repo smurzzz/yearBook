@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
-import { LogIn, ShieldAlert } from "lucide-react-native";
+import { CloudOff, LogIn, ShieldAlert } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/ui/Button";
 import { Checkbox } from "../components/ui/Fields";
@@ -11,7 +11,8 @@ import { useTheme } from "../theme/useTheme";
 import { typography } from "../theme/tokens";
 import { img } from "../prototype/assets";
 import { SCHOOL_DOMAIN, SCHOOL_NAME } from "../prototype/data";
-import { api, isApiError, isMaintenance, isOffline, USE_MOCK } from "../api";
+import { isMaintenance, isOffline, USE_MOCK } from "../api";
+import { resolveAccount } from "../api/account";
 import { useSession } from "../session";
 import { useMockApp } from "../prototype/store";
 import { DevSheet } from "./DevSheet";
@@ -59,7 +60,11 @@ export const SignInScreen = () => {
 
   /* Mock build keeps the dev picker (P2A). Real build runs Google SSO through
      Clerk, then GET /me decides between Home and First-Time Setup (T-021/T-023):
-     404 USER_NOT_FOUND means no users row yet, which is exactly the setup gate. */
+     404 USER_NOT_FOUND means no users row yet, which is exactly the setup gate.
+
+     The account decision comes from the shared resolveAccount() (api/account.ts)
+     — the same helper the session bridge uses — so both callers agree on what
+     "ok", "first-time", "not-allowed" and "unreachable" mean. */
   const continueWithGoogle = async () => {
     if (USE_MOCK) {
       setPickerOpen(true);
@@ -67,98 +72,58 @@ export const SignInScreen = () => {
     }
     setSigningIn(true);
     try {
-      // If we are already signed in, skip the Google sign-in flow and proceed to fetch user data.
-      if (session.isSignedIn) {
-        try {
-          const user = await api.getMe();
+      /* The Google sheet is only needed when there is no live Clerk session;
+         a returning student goes straight to the API. */
+      if (!session.isSignedIn) {
+        await session.signInWithGoogle();
+      }
+
+      const result = await resolveAccount();
+      switch (result.kind) {
+        case "ok":
           dispatch({
             type: "hydrate",
             patch: {
-              role: user.role,
+              role: result.profile.role,
               firstTimeSetupDone: true,
-              studentName: user.full_name,
-              studentClub: (user.club?.name ?? null) as typeof state.studentClub,
+              studentName: result.profile.fullName,
+              studentClub: result.profile.club,
             },
           });
           dispatch({ type: "googleSignIn" });
-        } catch (error) {
-          if (isApiError(error)) {
-            if (error.code === "USER_NOT_FOUND" || error.status === 404) {
-              // Session indicates signed in but no user record - treat as first-time user
-              dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
-              dispatch({ type: "googleSignIn" });
-            } else if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
-              await session.signOut();
-              dispatch({ type: "authIssue", issue: "nonSchool" });
-              return;
-            } else {
-              // For any other error (including unexpected 404s), treat as cancelled to avoid console spam
-              // but still log for debugging in development. In production, we might want to handle differently.
-              if (__DEV__) {
-                console.warn("[auth] Unexpected error in continueWithGoogle (isSignedIn branch)", error);
-              }
-              dispatch({ type: "authIssue", issue: "cancelled" });
-              return;
-            }
+          break;
+        case "first-time":
+          dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
+          dispatch({ type: "googleSignIn" });
+          break;
+        case "not-allowed":
+          await session.signOut();
+          dispatch({ type: "authIssue", issue: "nonSchool" });
+          break;
+        case "error":
+          /* An unreachable server is NOT a cancelled sign-in: name the real
+             cause and let the user retry, instead of blaming the account. */
+          if (isOffline(result.error)) {
+            dispatch({ type: "authIssue", issue: "none" });
+            dispatch({ type: "setNetwork", network: "offline" });
+          } else if (isMaintenance(result.error)) {
+            dispatch({ type: "authIssue", issue: "maintenance" });
           } else {
-            // Not an ApiError, treat as unexpected
             if (__DEV__) {
-              console.warn("[auth] Unexpected error in continueWithGoogle (isSignedIn branch) (non ApiError)", error);
+              console.warn("[auth] could not load the account", result.error);
             }
             dispatch({ type: "authIssue", issue: "cancelled" });
-            return;
           }
-        }
-      } else {
-        await session.signInWithGoogle();
-        try {
-          const user = await api.getMe();
-          dispatch({
-            type: "hydrate",
-            patch: {
-              role: user.role,
-              firstTimeSetupDone: true,
-              studentName: user.full_name,
-              studentClub: (user.club?.name ?? null) as typeof state.studentClub,
-            },
-          });
-        } catch (error) {
-          if (isApiError(error)) {
-            if (error.code === "USER_NOT_FOUND" || error.status === 404) {
-              dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
-            } else if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
-              await session.signOut();
-              dispatch({ type: "authIssue", issue: "nonSchool" });
-              return;
-            } else {
-              // For any other error (including unexpected 404s), treat as cancelled to avoid console spam
-              // but still log for debugging in development. In production, we might want to handle differently.
-              if (__DEV__) {
-                console.warn("[auth] Unexpected error in continueWithGoogle (else branch)", error);
-              }
-              dispatch({ type: "authIssue", issue: "cancelled" });
-              return;
-            }
-          } else {
-            // Not an ApiError, treat as unexpected
-            if (__DEV__) {
-              console.warn("[auth] Unexpected error in continueWithGoogle (else branch) (non ApiError)", error);
-            }
-            dispatch({ type: "authIssue", issue: "cancelled" });
-            return;
-          }
-        }
-        dispatch({ type: "googleSignIn" });
+          break;
       }
     } catch (error) {
-      // Keep the real cause visible: everything below is rendered as the same
-      // "Sign-in cancelled" banner otherwise (error-handling.md §2).
+      // The Google sheet itself failed (dismissed, blocked, Clerk error).
       console.error("[auth] continueWithGoogle failed", error);
       if ((error as Error)?.message === "SSO_CANCELLED") dispatch({ type: "googleCancel" });
       else if (isMaintenance(error)) dispatch({ type: "authIssue", issue: "maintenance" });
       else if (isOffline(error)) {
+        dispatch({ type: "authIssue", issue: "none" });
         dispatch({ type: "setNetwork", network: "offline" });
-        dispatch({ type: "googleCancel" });
       } else dispatch({ type: "authIssue", issue: "cancelled" });
     } finally {
       setSigningIn(false);
@@ -198,6 +163,23 @@ export const SignInScreen = () => {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 28), paddingTop: 12 }}>
+        {state.network === "offline" ? (
+          <InlineBanner
+            style={{ marginBottom: 12 }}
+            tone="warning"
+            icon={CloudOff}
+            title="Can't reach the server"
+            message="Your Google sign-in worked, but the app could not reach the API. Check that the server is running, then try again."
+            action={{
+              label: "Try again",
+              onClick: () => {
+                dispatch({ type: "setNetwork", network: "online" });
+                void continueWithGoogle();
+              },
+            }}
+          />
+        ) : null}
+
         {state.authIssue === "cancelled" ? (
           <InlineBanner
             style={{ marginBottom: 12 }}

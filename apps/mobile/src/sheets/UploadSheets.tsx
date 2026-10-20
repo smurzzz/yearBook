@@ -17,6 +17,9 @@ import { useMockApp } from "../prototype/store";
 import { img } from "../prototype/assets";
 import { LIBRARY_PHOTOS, eventById } from "../prototype/data";
 import { MAX_BATCH, uploadGuard, uploadSummary } from "../prototype/selectors";
+import { USE_MOCK } from "../api";
+import { usePhotoPicker } from "../lib/picker";
+import { useUploadRunner } from "../api/useUpload";
 
 const OptionRow = ({
   icon,
@@ -90,6 +93,21 @@ export const SourceChooserSheet = ({ open }: { open: boolean }) => {
 
 export const CameraPermissionSheet = ({ open }: { open: boolean }) => {
   const { dispatch, close, goto } = useMockApp();
+  const { pickCamera, busy, error } = usePhotoPicker();
+
+  const allow = async () => {
+    if (USE_MOCK) {
+      dispatch({ type: "addUploadItems", srcs: [LIBRARY_PHOTOS[4]] });
+      close();
+      goto("upload");
+      return;
+    }
+    const outcome = await pickCamera();
+    if (outcome.added > 0) {
+      close();
+      goto("upload");
+    }
+  };
 
   return (
     <Sheet open={open} onClose={close} hideClose>
@@ -97,21 +115,52 @@ export const CameraPermissionSheet = ({ open }: { open: boolean }) => {
         icon={Camera}
         title="Allow YearbookHub to use the camera?"
         message="Photos you take here go straight into the batch you are submitting. The app never keeps a copy on your phone."
-        allowLabel="Allow camera"
+        allowLabel={busy ? "Opening camera…" : "Allow camera"}
         onDeny={close}
         onAllow={() => {
-          dispatch({ type: "addUploadItems", srcs: [LIBRARY_PHOTOS[4]] });
-          close();
-          goto("upload");
+          void allow();
         }}
       />
+      {error === "denied" ? (
+        <InlineBanner
+          style={{ marginHorizontal: 20, marginBottom: 16 }}
+          tone="error"
+          title="Camera access is off"
+          message="Turn on camera access for YearbookHub in your device settings to take a photo."
+        />
+      ) : null}
+      {error === "too-large" ? (
+        <InlineBanner
+          style={{ marginHorizontal: 20, marginBottom: 16 }}
+          tone="error"
+          title="Photo too large"
+          message="This photo could not be compressed small enough. Try another one."
+        />
+      ) : null}
     </Sheet>
   );
 };
 
 export const GalleryPermissionSheet = ({ open }: { open: boolean }) => {
-  const { close, open: openOverlay } = useMockApp();
+  const { close, open: openOverlay, goto } = useMockApp();
+  const { pickLibrary, busy, error } = usePhotoPicker();
   const [denied, setDenied] = useState(false);
+
+  const allow = async () => {
+    if (USE_MOCK) {
+      openOverlay("libraryPicker");
+      return;
+    }
+    const outcome = await pickLibrary();
+    if (!outcome.granted) {
+      setDenied(true);
+      return;
+    }
+    if (outcome.added > 0) {
+      close();
+      goto("upload");
+    }
+  };
 
   if (denied) {
     return (
@@ -135,10 +184,20 @@ export const GalleryPermissionSheet = ({ open }: { open: boolean }) => {
         icon={Images}
         title="Allow access to your photos?"
         message="We only look at the photos you pick. Nothing is uploaded until you tap Submit."
-        allowLabel="Allow access"
+        allowLabel={busy ? "Opening gallery…" : "Allow access"}
         onDeny={() => setDenied(true)}
-        onAllow={() => openOverlay("libraryPicker")}
+        onAllow={() => {
+          void allow();
+        }}
       />
+      {error === "too-large" ? (
+        <InlineBanner
+          style={{ marginHorizontal: 20, marginBottom: 16 }}
+          tone="error"
+          title="Photo too large"
+          message="This photo could not be compressed small enough. Try another one."
+        />
+      ) : null}
     </Sheet>
   );
 };
@@ -244,6 +303,7 @@ export const LibraryPickerSheet = ({ open }: { open: boolean }) => {
 export const UploadProgressSheet = ({ open }: { open: boolean }) => {
   const t = useTheme();
   const { state, dispatch, close, goto } = useMockApp();
+  const { retry } = useUploadRunner();
   const summary = uploadSummary(state);
   const guard = uploadGuard(state);
   const event = state.upload.eventId ? eventById(state.upload.eventId) : null;
@@ -280,7 +340,9 @@ export const UploadProgressSheet = ({ open }: { open: boolean }) => {
             block
             title="Retry all failed"
             icon={<RefreshCw size={17} color={t.primaryForeground} />}
-            onPress={() => dispatch({ type: "retryFailed" })}
+            onPress={() => {
+              void retry();
+            }}
           />
         ) : (
           <Button block variant="outline" title="Continue in the background" onPress={close} />
@@ -405,7 +467,14 @@ export const UploadProgressSheet = ({ open }: { open: boolean }) => {
           </Text>
           <View style={{ marginTop: 4 }}>
             {state.upload.items.map((item, index) => (
-              <UploadRow key={item.id} item={item} index={index} onRetry={() => dispatch({ type: "retryFailed" })} />
+              <UploadRow
+                key={item.id}
+                item={item}
+                index={index}
+                onRetry={() => {
+                  void retry();
+                }}
+              />
             ))}
           </View>
 

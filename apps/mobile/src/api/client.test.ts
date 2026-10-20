@@ -201,16 +201,21 @@ describe("401 handling", () => {
     expect(calls).toHaveLength(1); // no point re-sending the same credential
   });
 
-  it("goes straight to session expired when there is no token to refresh", async () => {
+  it("does not sign the user out when the request never carried a token", async () => {
+    /* A signed-out visitor asking a private endpoint is a caller bug, not a
+       dead session: showing "Session expired" on a first launch would be a
+       lie. The error still surfaces to the caller. */
     const onUnauthorized = vi.fn();
     const { client, calls } = harness([json(401, { error: { code: "UNAUTHENTICATED", message: "x" } })], {
       getToken: async () => null,
       onUnauthorized,
     });
 
-    await client.request("GET", "/me").catch(() => undefined);
-    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    const error = await client.request("GET", "/me").catch((e) => e);
+    expect((error as ApiError).code).toBe("UNAUTHENTICATED");
+    expect(onUnauthorized).not.toHaveBeenCalled();
     expect(calls).toHaveLength(1);
+    expect(calls[0].init.headers.Authorization).toBeUndefined();
   });
 });
 
@@ -225,6 +230,33 @@ describe("global states", () => {
     expect(onOffline).toHaveBeenCalledTimes(1);
     expect(calls).toHaveLength(3); // 1 + 2 retries
     expect(sleeps).toEqual([500, 1_500]);
+  });
+
+  it("reports the server as reachable again once a response comes back", async () => {
+    /* The offline banner is sticky: a transport failure set it, and without
+       this hook nothing cleared it — the app kept saying "can't reach the
+       server" long after the server was back. */
+    const onOnline = vi.fn();
+    const { client } = harness([json(200, { data: { ok: true } })], { onOnline });
+
+    await client.request("GET", "/health");
+    expect(onOnline).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the server as reachable even when it answers with an error status", async () => {
+    const onOnline = vi.fn();
+    const { client } = harness([envelope("MAINTENANCE_MODE", "Back soon")], { onOnline });
+
+    await client.request("GET", "/events").catch(() => undefined);
+    expect(onOnline).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report the server as reachable when the request never got an answer", async () => {
+    const onOnline = vi.fn();
+    const { client } = harness([new TypeError("Network request failed")], { onOnline });
+
+    await client.request("GET", "/events").catch(() => undefined);
+    expect(onOnline).not.toHaveBeenCalled();
   });
 
   it("maps 503 MAINTENANCE_MODE to the maintenance state", async () => {

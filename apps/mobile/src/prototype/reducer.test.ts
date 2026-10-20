@@ -178,6 +178,90 @@ describe("upload pipeline", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* The real build's upload rows (T-043/T-044)                                  */
+/* -------------------------------------------------------------------------- */
+
+describe("prepared upload rows", () => {
+  const prepared = (id: string) => ({
+    id,
+    src: `file:///tmp/${id}.jpg`,
+    caption: "",
+    status: "waiting" as const,
+    progress: 0,
+    clientId: `client-${id}`,
+    files: {
+      original: { uri: `file:///tmp/${id}.jpg`, width: 1920, height: 1080, bytes: 900_000 },
+      thumb: { uri: `file:///tmp/${id}-thumb.jpg`, width: 480, height: 270, bytes: 9_000 },
+    },
+  });
+
+  it("puts the picked files into the draft and keeps them through the upload", () => {
+    const s = reducer(draftState(), { type: "addUploadFiles", items: [prepared("a")] });
+    expect(s.upload.items).toHaveLength(1);
+    expect(s.upload.items[0].files?.original.bytes).toBe(900_000);
+
+    const running = reducer(s, {
+      type: "setUploadItemProgress",
+      id: "a",
+      status: "uploading",
+      progress: 42,
+    });
+    expect(running.upload.items[0].status).toBe("uploading");
+    expect(running.upload.items[0].progress).toBe(42);
+    /* The bytes must survive the progress updates — a retry needs them. */
+    expect(running.upload.items[0].files?.thumb.uri).toBe("file:///tmp/a-thumb.jpg");
+  });
+
+  it("caps a batch of picked files at MAX_BATCH and names the ones left out", () => {
+    const items = Array.from({ length: MAX_BATCH + 3 }, (_, i) => prepared(`p${i}`));
+    const s = reducer(draftState(), { type: "addUploadFiles", items });
+    expect(s.upload.items).toHaveLength(MAX_BATCH);
+    expect(s.batchMessage).toContain("20 photos added");
+    expect(s.batchMessage).toContain("3 more were left out");
+  });
+
+  it("records a failed row with its note and moves the phase", () => {
+    const s = run(
+      draftState(),
+      { type: "addUploadFiles", items: [prepared("a")] },
+      {
+        type: "setUploadItemProgress",
+        id: "a",
+        status: "failed",
+        progress: 60,
+        failNote: "Interrupted",
+      },
+      { type: "setUploadPhase", phase: "running" },
+      { type: "setBatchMessage", message: "Nothing was lost." },
+    );
+    expect(s.upload.items[0].status).toBe("failed");
+    expect(s.upload.items[0].failNote).toBe("Interrupted");
+    expect(s.uploadPhase).toBe("running");
+    expect(s.batchMessage).toBe("Nothing was lost.");
+  });
+
+  it("a retry keeps the prepared files so the same photo can be sent again", () => {
+    const s = run(
+      draftState(),
+      { type: "addUploadFiles", items: [prepared("a")] },
+      { type: "startUpload" },
+      {
+        type: "setUploadItemProgress",
+        id: "a",
+        status: "failed",
+        progress: 60,
+        failNote: "Interrupted",
+      },
+      { type: "retryFailed" },
+    );
+    expect(s.upload.items[0].status).toBe("waiting");
+    expect(s.upload.items[0].failNote).toBeUndefined();
+    expect(s.upload.items[0].files).toBeDefined();
+    expect(s.upload.items[0].clientId).toBe("client-a");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Dev-forced system states (P2A/P2D dev menu)                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -195,6 +279,19 @@ describe("forced system states", () => {
     const on = reducer(base(), { type: "setLoadError", value: true });
     expect(on.loadError).toBe(true);
     expect(reducer(on, { type: "setLoadError", value: false }).loadError).toBe(false);
+  });
+
+  it("setNetwork returns the same state when the network did not change", () => {
+    /* The transport reports "the server answered" on every successful
+       request, so setNetwork fires constantly. Returning a new object each
+       time would re-render every subscriber for nothing. */
+    const online = base();
+    expect(reducer(online, { type: "setNetwork", network: "online" })).toBe(online);
+
+    const offline = reducer(online, { type: "setNetwork", network: "offline" });
+    expect(offline.network).toBe("offline");
+    expect(reducer(offline, { type: "setNetwork", network: "offline" })).toBe(offline);
+    expect(reducer(offline, { type: "setNetwork", network: "online" }).network).toBe("online");
   });
 
   it("session expiry signs the user out with the expired issue", () => {

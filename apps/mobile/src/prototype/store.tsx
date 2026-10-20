@@ -58,7 +58,10 @@ export const PrototypeProvider = ({
   });
 
   useEffect(() => {
-    if (!animate || state.uploadPhase !== "running") return;
+    /* The tick loop is the demo build's upload simulation. In the real build
+       the pipeline (api/upload.ts) drives the item states itself — a second
+       writer would fight it. */
+    if (!animate || !USE_MOCK || state.uploadPhase !== "running") return;
     // Slow-network simulation (P2A dev menu): the same ticks, ~5× slower.
     const id = setInterval(() => dispatch({ type: "uploadTick" }), state.slowNetwork ? 1_100 : 220);
     return () => clearInterval(id);

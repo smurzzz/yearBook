@@ -14,7 +14,8 @@ import { eventById } from "../prototype/data";
 import { countdown, formatShortDate } from "../prototype/format";
 import { MAX_BATCH, uploadGuard, userEventCount } from "../prototype/selectors";
 import { useMockApp } from "../prototype/store";
-import { useEventsSync, useMyPhotosSync } from "../api/sync";
+import { useEventsSync, useLookupsSync, useMyPhotosSync } from "../api/sync";
+import { useUploadRunner } from "../api/useUpload";
 import { CATEGORIES, CLUBS } from "../prototype/types";
 
 /** Screen 3 — Upload. One scrolling screen, single submit action. */
@@ -23,13 +24,20 @@ export const UploadScreen = () => {
   const insets = useSafeAreaInsets();
   const { state, dispatch, open } = useMockApp();
   // P6: the guard reads real events (deadline, per-event limit) and the
-  // student's hydrated photos; the submit pipeline itself is still the demo
-  // simulation until T-042/T-043 (image pipeline + real picker) land.
+  // student's hydrated photos. The submit button runs the real pipeline in
+  // the real build (api/upload.ts) and the demo simulation in the mockup.
   useEventsSync();
   useMyPhotosSync();
+  const lookups = useLookupsSync();
+  const { submit, running } = useUploadRunner();
   const { upload } = state;
   const [captionFor, setCaptionFor] = useState<string | null>(null);
   const guard = uploadGuard(state);
+
+  /* The chips show the names; the API works with ids (api/lookups.ts). In
+     the demo build the bundled lists are the API's seed lists. */
+  const categories = lookups.categories.length ? lookups.categories : CATEGORIES;
+  const clubs = lookups.clubs.length ? lookups.clubs : CLUBS;
   const event = upload.eventId ? eventById(upload.eventId) : null;
   const used = event ? userEventCount(state, event.id) : 0;
   const captionItem = upload.items.find((i) => i.id === captionFor) ?? null;
@@ -218,7 +226,7 @@ export const UploadScreen = () => {
         <View style={{ marginTop: 20 }}>
           <FieldLabel required>Category</FieldLabel>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {CATEGORIES.map((category) => (
+            {categories.map((category) => (
               <Chip
                 key={category}
                 selected={upload.category === category}
@@ -241,7 +249,7 @@ export const UploadScreen = () => {
           <Select
             value={upload.club}
             placeholder="None"
-            options={[{ value: "none", label: "None" }, ...CLUBS.map((c) => ({ value: c, label: c }))]}
+            options={[{ value: "none", label: "None" }, ...clubs.map((c) => ({ value: c, label: c }))]}
             onChange={(value) => dispatch({ type: "setUploadField", field: "club", value: value === "none" ? null : value })}
           />
         </View>
@@ -285,9 +293,15 @@ export const UploadScreen = () => {
         <Button
           block
           size="lg"
-          disabled={!guard.ok}
-          onPress={() => dispatch({ type: "startUpload" })}
-          title={`Submit ${upload.items.length || ""} ${upload.items.length === 1 ? "photo" : "photos"}`}
+          disabled={!guard.ok || running}
+          onPress={() => {
+            void submit();
+          }}
+          title={
+            running
+              ? "Uploading…"
+              : `Submit ${upload.items.length || ""} ${upload.items.length === 1 ? "photo" : "photos"}`
+          }
         />
         <Text style={[typography.caption, { color: t.mutedForeground, textAlign: "center", marginTop: 8 }]}>
           {event

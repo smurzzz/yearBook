@@ -51,6 +51,8 @@ export interface HttpClientHooks {
   onMaintenance?: () => void;
   /** Transport failure after retries → offline banner. */
   onOffline?: () => void;
+  /** A response came back at all → the server is reachable again. */
+  onOnline?: () => void;
 }
 
 export interface HttpClientOptions extends HttpClientHooks {
@@ -99,6 +101,7 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     onUnauthorized,
     onMaintenance,
     onOffline,
+    onOnline,
   } = options;
 
   const doFetch: FetchLike =
@@ -209,8 +212,16 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
         if (timer !== undefined) clearTimeout(timer);
       }
 
+      /* The server answered, so it is reachable again. The offline banner is
+         sticky otherwise: once a transport failure set it, nothing cleared it
+         and the app kept saying "can't reach the server" after the server came
+         back. Any status counts — a 503 still proves the server is up. */
+      onOnline?.();
+
       // Token expired: fetch a fresh one and retry exactly once (authentication.md §4).
-      if (res.status === 401 && !refreshed) {
+      // Only worth a refresh when a token was actually sent — an unauthenticated
+      // request cannot be fixed by a newer credential.
+      if (res.status === 401 && !refreshed && token) {
         refreshed = true;
         const fresh = await getToken({ skipCache: true });
         if (fresh && fresh !== token) {
@@ -219,7 +230,12 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
         }
       }
       if (res.status === 401) {
-        onUnauthorized?.();
+        /* A 401 on a request that carried a token means the session died:
+           sign out and show "Session expired". A 401 on a request sent
+           WITHOUT a token means the caller asked a private endpoint while
+           signed out — signing the user out again (and showing the banner on
+           a first launch) would be a lie. */
+        if (token) onUnauthorized?.();
         throw await toError(res);
       }
 
