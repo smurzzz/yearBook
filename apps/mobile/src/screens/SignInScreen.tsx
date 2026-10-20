@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { LogIn, ShieldAlert } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,32 +67,93 @@ export const SignInScreen = () => {
     }
     setSigningIn(true);
     try {
-      await session.signInWithGoogle();
-      try {
-        const user = await api.getMe();
-        dispatch({
-          type: "hydrate",
-          patch: {
-            role: user.role,
-            firstTimeSetupDone: true,
-            studentName: user.full_name,
-            studentClub: (user.club?.name ?? null) as typeof state.studentClub,
-          },
-        });
-      } catch (error) {
-        const code = isApiError(error) ? error.code : null;
-        if (code === "USER_NOT_FOUND") {
-          dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
-        } else if (code === "EMAIL_DOMAIN_NOT_ALLOWED") {
-          await session.signOut();
-          dispatch({ type: "authIssue", issue: "nonSchool" });
-          return;
-        } else {
-          throw error;
+      // If we are already signed in, skip the Google sign-in flow and proceed to fetch user data.
+      if (session.isSignedIn) {
+        try {
+          const user = await api.getMe();
+          dispatch({
+            type: "hydrate",
+            patch: {
+              role: user.role,
+              firstTimeSetupDone: true,
+              studentName: user.full_name,
+              studentClub: (user.club?.name ?? null) as typeof state.studentClub,
+            },
+          });
+          dispatch({ type: "googleSignIn" });
+        } catch (error) {
+          if (isApiError(error)) {
+            if (error.code === "USER_NOT_FOUND" || error.status === 404) {
+              // Session indicates signed in but no user record - treat as first-time user
+              dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
+              dispatch({ type: "googleSignIn" });
+            } else if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
+              await session.signOut();
+              dispatch({ type: "authIssue", issue: "nonSchool" });
+              return;
+            } else {
+              // For any other error (including unexpected 404s), treat as cancelled to avoid console spam
+              // but still log for debugging in development. In production, we might want to handle differently.
+              if (__DEV__) {
+                console.warn("[auth] Unexpected error in continueWithGoogle (isSignedIn branch)", error);
+              }
+              dispatch({ type: "authIssue", issue: "cancelled" });
+              return;
+            }
+          } else {
+            // Not an ApiError, treat as unexpected
+            if (__DEV__) {
+              console.warn("[auth] Unexpected error in continueWithGoogle (isSignedIn branch) (non ApiError)", error);
+            }
+            dispatch({ type: "authIssue", issue: "cancelled" });
+            return;
+          }
         }
+      } else {
+        await session.signInWithGoogle();
+        try {
+          const user = await api.getMe();
+          dispatch({
+            type: "hydrate",
+            patch: {
+              role: user.role,
+              firstTimeSetupDone: true,
+              studentName: user.full_name,
+              studentClub: (user.club?.name ?? null) as typeof state.studentClub,
+            },
+          });
+        } catch (error) {
+          if (isApiError(error)) {
+            if (error.code === "USER_NOT_FOUND" || error.status === 404) {
+              dispatch({ type: "hydrate", patch: { role: "student", firstTimeSetupDone: false } });
+            } else if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
+              await session.signOut();
+              dispatch({ type: "authIssue", issue: "nonSchool" });
+              return;
+            } else {
+              // For any other error (including unexpected 404s), treat as cancelled to avoid console spam
+              // but still log for debugging in development. In production, we might want to handle differently.
+              if (__DEV__) {
+                console.warn("[auth] Unexpected error in continueWithGoogle (else branch)", error);
+              }
+              dispatch({ type: "authIssue", issue: "cancelled" });
+              return;
+            }
+          } else {
+            // Not an ApiError, treat as unexpected
+            if (__DEV__) {
+              console.warn("[auth] Unexpected error in continueWithGoogle (else branch) (non ApiError)", error);
+            }
+            dispatch({ type: "authIssue", issue: "cancelled" });
+            return;
+          }
+        }
+        dispatch({ type: "googleSignIn" });
       }
-      dispatch({ type: "googleSignIn" });
     } catch (error) {
+      // Keep the real cause visible: everything below is rendered as the same
+      // "Sign-in cancelled" banner otherwise (error-handling.md §2).
+      console.error("[auth] continueWithGoogle failed", error);
       if ((error as Error)?.message === "SSO_CANCELLED") dispatch({ type: "googleCancel" });
       else if (isMaintenance(error)) dispatch({ type: "authIssue", issue: "maintenance" });
       else if (isOffline(error)) {

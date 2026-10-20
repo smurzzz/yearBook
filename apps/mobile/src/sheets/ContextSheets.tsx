@@ -28,6 +28,7 @@ import { EmptyState, InlineBanner } from "../components/ui/Feedback";
 import { ListRow, Surface } from "../components/ui/Surface";
 import { RoleBadge, UnreadDot } from "../components/ui/Chips";
 import { useMockApp } from "../prototype/store";
+import { useSession } from "../session";
 import { api, isApiError, isOffline, USE_MOCK } from "../api";
 import { useNotificationsSync } from "../api/sync";
 import { CONSENT_VERSION } from "@yearbookhub/shared";
@@ -53,11 +54,15 @@ const EYEBROW = {
 export const FirstTimeSetupSheet = ({ open }: { open: boolean }) => {
   const t = useTheme();
   const { state, dispatch, close } = useMockApp();
-  const [name, setName] = useState(state.studentName);
+  const session = useSession();
+  const [name, setName] = useState(session.fullName ?? state.studentName);
   const [club, setClub] = useState<string | null>(state.studentClub);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const person = personById(STUDENT_ID);
+  /* Real build: the signed-in Google identity; the demo picker keeps fixtures. */
+  const googleEmail = session.email ?? person.email;
+  const googleAvatar = session.avatarUrl ?? person.avatar;
 
   /* Real build: this is POST /me — the bootstrap that stores consent, resolves
      the club id, and decides the role server-side (api.md §3, authentication.md §6). */
@@ -130,13 +135,13 @@ export const FirstTimeSetupSheet = ({ open }: { open: boolean }) => {
             padding: 14,
           }}
         >
-          <Avatar src={person.avatar} name={name} size="lg" />
+          <Avatar src={googleAvatar} name={name} size="lg" />
           <View style={{ flexShrink: 1 }}>
             <Text style={[typography.label, { fontWeight: "700", color: t.foreground }]}>
               Signed in with Google
             </Text>
             <Text numberOfLines={1} style={[typography.caption, { color: t.mutedForeground }]}>
-              {person.email}
+              {googleEmail}
             </Text>
           </View>
         </View>

@@ -58,7 +58,19 @@ export async function getClerkProfile(userId: string): Promise<ClerkProfile> {
     primary?.verification?.status === "verified"
       ? primary
       : (user.emailAddresses.find((e) => e.verification?.status === "verified") ?? null);
-  const email = verified?.emailAddress ?? primary?.emailAddress;
+  /* This instance signs up Google-only with the email attribute disabled, so a
+     real Google user's address lives on the oauth external account, not on
+     emailAddresses (the live gate's POST /me 401 was exactly this). Google
+     verifies the address at the provider; fall back to it after Clerk's own
+     verified/primary email. */
+  const external =
+    user.externalAccounts?.find(
+      (a) =>
+        (a.verification?.status === "verified" || a.provider === "google") &&
+        typeof a.emailAddress === "string" &&
+        a.emailAddress.includes("@"),
+    ) ?? null;
+  const email = verified?.emailAddress ?? primary?.emailAddress ?? external?.emailAddress;
   if (!email) {
     throw new AppError("UNAUTHENTICATED", 401, "No verified email on the Google account.");
   }

@@ -222,3 +222,58 @@ describe("validation", () => {
     expect(body.error.details.fields.full_name).toBeTruthy();
   });
 });
+
+/* This instance signs up Google-only with the Clerk email attribute disabled,
+   so a real Google user's address lives on the oauth external account only
+   (the live gate's POST /me 401 was exactly this). */
+describe("email from the Google external account (no Clerk email addresses)", () => {
+  const googleOnlyUser = (email: string) => ({
+    primaryEmailAddress: null,
+    emailAddresses: [],
+    externalAccounts: [
+      { provider: "google", emailAddress: email, verification: { status: "verified" } },
+    ],
+    firstName: "Gate",
+    lastName: "Student",
+    imageUrl: null,
+  });
+
+  const mockClerkUser = (user: unknown) => {
+    clerkClientMock.mockResolvedValue({
+      users: { getUser: vi.fn().mockResolvedValue(user) },
+    } as unknown as Awaited<ReturnType<typeof clerkClient>>);
+  };
+
+  it("bootstraps with the external account's email", async () => {
+    mockClerkUser(googleOnlyUser("mikaela.reyes@student.stmichaels.edu.ph"));
+
+    const res = await postMe(validBody);
+    expect(res.status).toBe(201);
+    const { data } = await res.json();
+    expect(data.email).toBe("mikaela.reyes@student.stmichaels.edu.ph");
+  });
+
+  it("still enforces ALLOWED_EMAIL_DOMAINS on that email", async () => {
+    process.env.ALLOWED_EMAIL_DOMAINS = "school.edu";
+    mockClerkUser(googleOnlyUser("someone@gmail.com"));
+
+    const res = await postMe(validBody);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("EMAIL_DOMAIN_NOT_ALLOWED");
+  });
+
+  it("no email anywhere → 401 UNAUTHENTICATED", async () => {
+    mockClerkUser({
+      primaryEmailAddress: null,
+      emailAddresses: [],
+      externalAccounts: [],
+      firstName: null,
+      lastName: null,
+      imageUrl: null,
+    });
+
+    const res = await postMe(validBody);
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("UNAUTHENTICATED");
+  });
+});

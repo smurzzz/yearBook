@@ -11,6 +11,10 @@ export interface SessionApi {
   readonly kind: "mock" | "clerk";
   readonly isSignedIn: boolean;
   readonly userId: string | null;
+  /** Signed-in Google identity (real build only; null in the demo picker). */
+  readonly email: string | null;
+  readonly fullName: string | null;
+  readonly avatarUrl: string | null;
   /** Fresh per request (authentication.md §4). */
   getToken(options?: { skipCache?: boolean }): Promise<string | null>;
   /** Google SSO. Rejects with SSO_CANCELLED when the sheet is dismissed. */
@@ -23,6 +27,9 @@ export const MockSession: SessionApi = {
   kind: "mock",
   isSignedIn: false,
   userId: null,
+  email: null,
+  fullName: null,
+  avatarUrl: null,
   getToken: async () => null,
   signInWithGoogle: async () => {
     throw new Error("MOCK_SESSION: the mock build signs in through the prototype picker.");
